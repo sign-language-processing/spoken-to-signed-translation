@@ -1,0 +1,43 @@
+[project]
+name = "spoken-to-signed"
+description = "Simple pipeline for spoken to signed translation"
+version = "0.0.1"
+authors = [
+    { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" }
+]
+readme = "README.md"
+dependencies = [
+    "pose-format",
+    "simplemma", # Used generally for text_to_gloss (in simple_lemmatizer.py)
+
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pylint"
+]
+
+[tool.yapf]
+based_on_style = "google"
+column_limit = 120
+
+[tool.setuptools]
+packages = [
+    "src",
+]
+
+[tool.setuptools.package-data]
+src = ["*.pth"]
+
+[tool.pytest.ini_options]
+addopts = "-v"
+testpaths = [
+    "src",
+]
+
+[project.scripts]
+text_to_gloss = "src.bin:text_to_gloss"
+pose_to_video = "src.bin:pose_to_video"
+text_to_gloss_to_pose = "src.bin:text_to_gloss_to_pose"
+text_to_gloss_to_pose_to_video = "src.bin:text_to_gloss_to_pose_to_video"
