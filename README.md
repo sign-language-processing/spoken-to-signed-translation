@@ -2,9 +2,11 @@
 
 a `text-to-gloss-to-pose-to-video` pipeline for spoken to signed language translation.
 
-- Demos available for [Swiss German Sign Language](https://sign.mt/?sil=ch&spl=de)
-  , [French Sign Language of Switzerland](https://sign.mt/?sil=ch&spl=fr),
-  and [Italian Sign Language of Switzerland](https://sign.mt/?sil=ch&spl=it).
+- Demos available for:
+  - 🇩🇪 [Swiss German Sign Language](https://sign.mt/?sil=ch&spl=de) 🇨🇭
+  - 🇫🇷 [French Sign Language of Switzerland](https://sign.mt/?sil=ch&spl=fr)🇨🇭
+  - 🇮🇹 [Italian Sign Language of Switzerland](https://sign.mt/?sil=ch&spl=it) 🇨🇭
+
 - Paper available on [arxiv](https://arxiv.org/abs/xxxx.xxxxx), accepted
   at [AT4SSL 2023](https://sites.google.com/tilburguniversity.edu/at4ssl2023/).
 
@@ -16,9 +18,28 @@ a `text-to-gloss-to-pose-to-video` pipeline for spoken to signed language transl
 pip install git+https://github.com/ZurichNLP/spoken-to-signed-translation.git
 ```
 
+Then, to download a lexicon, run:
+```.bash
+download_lexicon \
+  --name <signsuisse> \
+  --directory <path_to_directory>
+```
+
 ## Usage
 
-Our pipeline provides multiple scripts. Here is how you can use them:
+For language codes, we use the [IANA Language Subtag Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry).
+Our pipeline provides multiple scripts. 
+To quickly demo it using a dummy lexicon, run:
+
+```bash
+text_to_gloss_to_pose \
+  --text "Kleine Kinder essen Pizza" \
+  --glosser "simple" \
+  --lexicon "assets/dummy_lexicon" \
+  --spoken-language "de" \
+  --signed-language "sgg" \
+  --pose "quick_test.pose"
+```
 
 #### Text-to-Gloss Translation
 
@@ -28,7 +49,7 @@ text_to_gloss \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
   --spoken-language <de|fr|it|en> \
-  --signed-language <ch|de|en>
+  --signed-language <sgg|gsg|bfi>
 ```
 
 #### Pose-to-Video Conversion
@@ -47,8 +68,9 @@ pose_to_video \
 text_to_gloss_to_pose \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
+  --lexicon <path_to_directory> \
   --spoken-language <de|fr|it|en> \
-  --signed-language <ch|de|en> \
+  --signed-language <sgg|gsg|bfi> \
   --pose <output_pose_file_path>.pose
 ```
 
@@ -59,11 +81,22 @@ text_to_gloss_to_pose \
 text_to_gloss_to_pose_to_video \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
+  --lexicon <path_to_directory> \
   --spoken-language <de|fr|it|en> \
-  --signed-language <ch|de|en> \
+  --signed-language <sgg|gsg|bfi> \
   --video <output_video_file_path>.mp4
 ```
 
+#### Example for testing
+```bash
+text_to_gloss_to_pose_to_video \
+  --text "Kleine Kinder essen Pizza" \
+  --glosser "rules" \
+  --lexicon "assets/dummy_lexicon" \
+  --spoken-language "de" \
+  --signed-language "ch" \
+  --video "example.mp4"
+  ```
 
 
 ## Methodology
@@ -73,15 +106,15 @@ The pipeline consists of three main components:
 1. **Text-to-Gloss Translation:**
    Transforms the input (spoken language) text into a sequence of glosses.
 
-- [Simple lemmatizer](src/text_to_gloss/simple_lemmatizer.py),
-- [Rule-based word reordering and dropping](src/text_to_gloss/rule_based.py) component
+- [Simple lemmatizer](src/text_to_gloss/simple.py),
+- [Rule-based word reordering and dropping](src/text_to_gloss/rules.py) component
 - [Neural machine translation system](src/text_to_gloss/nmt.py).
 
 2. **Gloss-to-Pose Conversion:**
 
 - [Lookup](src/gloss_to_pose/lookup.py): Uses a lexicon of signed languages to convert the sequence of glosses into a
   sequence of poses.
-- [Pose Concatenation](src/gloss_to_pose/pose_concatenation.py): The poses are then cropped, concatenated, and smoothed,
+- [Pose Concatenation](src/gloss_to_pose/concatenate.py): The poses are then cropped, concatenated, and smoothed,
   creating a pose representation for the input sentence.
 
 3. **Pose-to-Video Generation:** Transforms the processed pose video back into a synthesized video using an image

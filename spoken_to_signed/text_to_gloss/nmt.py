@@ -1,7 +1,7 @@
-from typing import List, Tuple
+from .types import Gloss
 
 
-def text_to_gloss(text: str, language: str) -> List[Tuple[str, str]]:
+def text_to_gloss(text: str, language: str) -> Gloss:
     raise NotImplementedError()
     #
     # words = text.split(" ")

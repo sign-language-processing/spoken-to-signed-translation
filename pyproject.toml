@@ -8,6 +8,8 @@ authors = [
 readme = "README.md"
 dependencies = [
     "pose-format",
+    "numpy",
+    "scipy", # Used for savgol filter
     "simplemma", # Used generally for text_to_gloss (in simple_lemmatizer.py)
 
 ]
@@ -24,20 +26,24 @@ column_limit = 120
 
 [tool.setuptools]
 packages = [
-    "src",
+    "spoken_to_signed",
+    "spoken_to_signed.text_to_gloss",
+    "spoken_to_signed.gloss_to_pose",
+    "spoken_to_signed.pose_to_video"
 ]
 
 [tool.setuptools.package-data]
-src = ["*.pth"]
+spoken_to_signed = ["*.pth"]
 
 [tool.pytest.ini_options]
 addopts = "-v"
 testpaths = [
-    "src",
+    "spoken_to_signed",
 ]
 
 [project.scripts]
-text_to_gloss = "src.bin:text_to_gloss"
-pose_to_video = "src.bin:pose_to_video"
-text_to_gloss_to_pose = "src.bin:text_to_gloss_to_pose"
-text_to_gloss_to_pose_to_video = "src.bin:text_to_gloss_to_pose_to_video"
+download_lexicon = "spoken_to_signed.download_lexicon:main"
+text_to_gloss = "spoken_to_signed.bin:text_to_gloss"
+pose_to_video = "spoken_to_signed.bin:pose_to_video"
+text_to_gloss_to_pose = "spoken_to_signed.bin:text_to_gloss_to_pose"
+text_to_gloss_to_pose_to_video = "spoken_to_signed.bin:text_to_gloss_to_pose_to_video"

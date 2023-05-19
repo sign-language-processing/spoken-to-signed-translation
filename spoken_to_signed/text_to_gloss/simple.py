@@ -1,9 +1,11 @@
-from typing import List, Tuple
-from simplemma import text_lemmatizer as simple_lemmatizer, simple_tokenizer
+from simplemma import simple_tokenizer
+from simplemma import text_lemmatizer as simple_lemmatizer
 from simplemma.simplemma import LANGLIST
 
+from .types import Gloss
 
-def text_to_gloss(text: str, language: str) -> List[Tuple[str, str]]:
+
+def text_to_gloss(text: str, language: str) -> Gloss:
     if language not in LANGLIST:
         raise ValueError(f"Language {language} not supported")
 

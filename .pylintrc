@@ -1,0 +1,27 @@
+[MASTER]
+# init-hook='import sys; sys.path.append(".")'
+disable=
+	W0221, # (arguments-differ)
+	W0223, # (abstract-method)
+	R0801, # (duplicate-code)
+	R0901, # (too-many-ancestors)
+	R0902, # (too-many-instance-attributes)
+	R0903, # (too-few-public-methods)
+	R0913, # (too-many-arguments)
+	R0914, # (too-many-locals)
+	R1732, # (consider-using-with)
+	R1735, # (use-dict-literal)
+	C0103, # (invalid-name)
+    C0114, # (missing-module-docstring)
+	C0115, # (missing-class-docstring)
+	C0116, # (missing-function-docstring)
+	W0212 # (protected-access)
+
+[FORMAT]
+max-line-length=120
+good-names-rgxs=^[_a-z][_a-z0-9]?$
+
+[TYPECHECK]
+# List of members which are set dynamically and missed by Pylint inference
+# system, and so shouldn't trigger E1101 when accessed.
+generated-members=numpy.*, torch.*, cv2.*

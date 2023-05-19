@@ -1,9 +1,12 @@
 # Text-to-Gloss
 
+([Background](https://research.sign.mt/#text-to-gloss))
+
+
 Each file must implement a `text_to_gloss` function with the following signature:
 
 ```python
-def text_to_gloss(text: str, language: str) -> List[Tuple[str, str]]:
+def text_to_gloss(text: str, language: str) -> Gloss:
     ...
 ```
 
