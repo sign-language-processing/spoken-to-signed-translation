@@ -2,9 +2,11 @@
 
 This evaluation was conducted for three spoken-signed language pairs:
 
+
+
 ### German ➜ Swiss German Sign Language
 
-File: [de-dsgs.zip](de-dsgs.zip)
+File: [`de-dgs.zip`](ANONYMOUS)
 
 Evaluators:
 - Anonymous person 1
