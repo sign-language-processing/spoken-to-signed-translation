@@ -1,7 +1,5 @@
 README.md:
 
-- @amit Add citation bibtex
-- @amit Add ArXiv link
 - @mathias Add NMT model path links
 
 src:

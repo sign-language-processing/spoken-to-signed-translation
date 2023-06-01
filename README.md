@@ -7,19 +7,19 @@ a `text-to-gloss-to-pose-to-video` pipeline for spoken to signed language transl
   - 🇫🇷 [French Sign Language of Switzerland](https://sign.mt/?sil=ch&spl=fr)🇨🇭
   - 🇮🇹 [Italian Sign Language of Switzerland](https://sign.mt/?sil=ch&spl=it) 🇨🇭
 
-- Paper available on [arxiv](https://arxiv.org/abs/xxxx.xxxxx), accepted
+- Paper available on [arxiv](https://arxiv.org/abs/2305.17714), accepted
   at [AT4SSL 2023](https://sites.google.com/tilburguniversity.edu/at4ssl2023/).
 
 ![Visualization of our pipeline](assets/pipeline.jpg)
 
 ## Install
 
-```.bash
+```bash
 pip install git+https://github.com/ZurichNLP/spoken-to-signed-translation.git
 ```
 
 Then, to download a lexicon, run:
-```.bash
+```bash
 download_lexicon \
   --name <signsuisse> \
   --directory <path_to_directory>
@@ -43,8 +43,9 @@ text_to_gloss_to_pose \
 
 #### Text-to-Gloss Translation
 
+This script translates input text into gloss notation. 
+
 ```bash
-# This script translates input text into gloss notation. 
 text_to_gloss \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
@@ -54,8 +55,9 @@ text_to_gloss \
 
 #### Pose-to-Video Conversion
 
+This script converts a pose file into a video file.
+
 ```bash
-# This script converts a pose file into a video file.
 pose_to_video \
   --pose <pose_file_path>.pose \
   --video <output_video_file_path>.mp4
@@ -63,8 +65,9 @@ pose_to_video \
 
 #### Text-to-Gloss-to-Pose Translation
 
+This script translates input text into gloss notation, then converts the glosses into a pose file.
+
 ```bash
-# This script translates input text into gloss notation, then converts the glosses into a pose file.
 text_to_gloss_to_pose \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
@@ -76,8 +79,9 @@ text_to_gloss_to_pose \
 
 #### Text-to-Gloss-to-Pose-to-Video Translation
 
+This script translates input text into gloss notation, converts the glosses into a pose file, and then transforms the pose file into a video.
+
 ```bash
-# This script translates input text into gloss notation, converts the glosses into a pose file, and then transforms the pose file into a video.
 text_to_gloss_to_pose_to_video \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
@@ -86,18 +90,6 @@ text_to_gloss_to_pose_to_video \
   --signed-language <sgg|gsg|bfi> \
   --video <output_video_file_path>.mp4
 ```
-
-#### Example for testing
-```bash
-text_to_gloss_to_pose_to_video \
-  --text "Kleine Kinder essen Pizza" \
-  --glosser "rules" \
-  --lexicon "assets/dummy_lexicon" \
-  --spoken-language "de" \
-  --signed-language "ch" \
-  --video "example.mp4"
-  ```
-
 
 ## Methodology
 
@@ -122,24 +114,27 @@ The pipeline consists of three main components:
 
 ## Supported Languages
 
-| Language                   | Lemmatizers Supported             | Lexicon Data Source                                  |
-|----------------------------|-----------------------------------|------------------------------------------------------|
-| Swiss German Sign Language | Simplemma, Rule-Based             | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
-| French Sign Language       | Simplemma                         | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
-| Italian Sign Language      | Simplemma                         | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
-| German Sign Language       | Simplemma, [NMT](TODO-model-link) | WordNet (Coming Soon)                                |
-| British Sign Language      | Simplemma, [NMT](TODO-model-link) | WordNet (Coming Soon)                                |
+| Language                   | Lemmatizers Supported              | Lexicon Data Source                                  |
+|----------------------------|------------------------------------|------------------------------------------------------|
+| Swiss German Sign Language | `simple`, `rules`                  | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
+| French Sign Language       | `simple`                           | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
+| Italian Sign Language      | `simple`                           | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
+| German Sign Language       | `simple`, [`nmt`](TODO-model-link) | WordNet (Coming Soon)                                |
+| British Sign Language      | `simple`, [`nmt`](TODO-model-link) | WordNet (Coming Soon)                                |
 
 
 ## Citation
 
 If you find this work useful, please cite our paper:
 
-```.bib
-@article{author2022gloss,
-    title={Gloss-Based Baseline for Spoken to Signed Language Translation},
-    author={Author, Firstname and Coauthor, Firstname},
-    journal={arXiv preprint arXiv:xxxx.xxxxx},
-    year={2022}
+```bib
+@inproceedings{moryossef2023baseline,
+  title={An Open-Source Gloss-Based Baseline for Spoken to Signed Language Translation},
+  author={Moryossef, Amit and M{\"u}ller, Mathias and G{\"o}hring, Anne and Jiang, Zifan and Goldberg, Yoav and Ebling, Sarah},
+  booktitle={2nd International Workshop on Automatic Translation for Signed and Spoken Languages (AT4SSL)},
+  year={2023},
+  month={June},
+  url={https://github.com/ZurichNLP/spoken-to-signed-translation},
+  note={Available at: \url{https://arxiv.org/abs/2305.17714}}
 }
 ```

@@ -1,5 +1,5 @@
 path,spoken_language,signed_language,words,glosses,priority
-de-sgg/kleine.pose,de,sgg,kleine,Kleine,0
-de-sgg/kinder.pose,de,sgg,kinder,Kinder,0
-de-sgg/essen.pose,de,sgg,essen,Essen,0
-de-sgg/pizza.pose,de,sgg,pizza,Pizza,0
+sgg/kleine.pose,de,sgg,kleine,Kleine,0
+sgg/kinder.pose,de,sgg,kinder,Kinder,0
+sgg/essen.pose,de,sgg,essen,Essen,0
+sgg/pizza.pose,de,sgg,pizza,Pizza,0
