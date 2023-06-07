@@ -1,3 +1,3 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
-Gloss = List[Tuple[str, str]]
+Gloss = List[Tuple[Optional[str], str]]
