@@ -15,6 +15,9 @@ MODELS_PATH = './models'
 
 
 def download_and_extract_file(url: str, filepath: str):
+
+    print("Attempting to download and extract: %s" % url)
+
     r = requests.get(url)
 
     filepath_tar_ball = filepath + ".tar.gz"
@@ -22,8 +25,10 @@ def download_and_extract_file(url: str, filepath: str):
     open(filepath_tar_ball, 'wb').write(r.content)
 
     tar = tarfile.open(filepath_tar_ball)
-    tar.extractall()
+    tar.extractall(path=MODELS_PATH)
     tar.close()
+
+    print("Model saved to : %s" % filepath)
 
 
 def download_model_if_does_not_exist(sockeye_paths: Dict[str, str]):
@@ -34,10 +39,12 @@ def download_model_if_does_not_exist(sockeye_paths: Dict[str, str]):
     if not os.path.exists(model_path):
         download_and_extract_file(url, model_path)
 
-    assert os.path.exists(model_path)
+    assert os.path.exists(model_path), "Model folder '%s' does not exist after " \
+                                       "attempting to download and extract." % model_path
 
 
 def load_sockeye_models():
+    os.makedirs(MODELS_PATH)
 
     spm_name = "sentencepiece.model"
 
