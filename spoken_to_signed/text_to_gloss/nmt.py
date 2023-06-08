@@ -44,7 +44,8 @@ def download_model_if_does_not_exist(sockeye_paths: Dict[str, str]):
 
 
 def load_sockeye_models():
-    os.makedirs(MODELS_PATH)
+
+    os.makedirs(MODELS_PATH, exist_ok=True)
 
     spm_name = "sentencepiece.model"
 
