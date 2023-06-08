@@ -1,9 +1,10 @@
 [project]
 name = "spoken-to-signed"
 description = "Simple pipeline for spoken to signed translation"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
-    { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" }
+    { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" },
+    { name = "Mathias Müller", email = "mmueller@cl.uzh.ch" }
 ]
 readme = "README.md"
 dependencies = [
@@ -11,7 +12,9 @@ dependencies = [
     "numpy",
     "scipy", # Used for savgol filter
     "simplemma", # Used generally for text_to_gloss (in simple_lemmatizer.py)
-
+    "spacy", # used for "rules" text_to_gloss component
+    "sockeye==3.1.10", # used for "nmt" text_to_gloss component
+    "sentencepiece", # used for "nmt" text_to_gloss component
 ]
 
 [project.optional-dependencies]
