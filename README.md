@@ -119,13 +119,13 @@ The pipeline consists of three main components:
 
 ## Supported Languages
 
-| Language                   | Glossers Supported                 | Lexicon Data Source                                  |
-|----------------------------|------------------------------------|------------------------------------------------------|
-| Swiss German Sign Language | `simple`, `rules`                  | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
-| French Sign Language       | `simple`                           | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
-| Italian Sign Language      | `simple`                           | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
-| German Sign Language       | `simple`, [`nmt`](TODO-model-link) | WordNet (Coming Soon)                                |
-| British Sign Language      | `simple`, [`nmt`](TODO-model-link) | WordNet (Coming Soon)                                |
+| Language                   | Glossers Supported                                                                                                                          | Lexicon Data Source                                  |
+|----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| Swiss German Sign Language | `simple`, `rules`,[`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
+| French Sign Language       | `simple`                                                                                                                                    | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
+| Italian Sign Language      | `simple`                                                                                                                                    | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
+| German Sign Language       | `simple`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)         | WordNet (Coming Soon)                                |
+| British Sign Language      | `simple`, [`nmt`](TODO-model-link)                                                                                                          | WordNet (Coming Soon)                                |
 
 
 ## Citation
