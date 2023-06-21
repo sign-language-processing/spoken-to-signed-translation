@@ -32,8 +32,11 @@ Our pipeline provides multiple scripts.
 To quickly demo it using a dummy lexicon, run:
 
 ```bash
+git clone https://github.com/ZurichNLP/spoken-to-signed-translation
+cd spoken-to-signed-translation
+
 text_to_gloss_to_pose \
-  --text "Kleine Kinder essen Pizza" \
+  --text "Kleine Kinder essen Pizza." \
   --glosser "simple" \
   --lexicon "assets/dummy_lexicon" \
   --spoken-language "de" \
@@ -49,8 +52,8 @@ This script translates input text into gloss notation.
 text_to_gloss \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
-  --spoken-language <de|fr|it|en> \
-  --signed-language <sgg|gsg|bfi>
+  --spoken-language <de|fr|it> \
+  --signed-language <sgg|ssr|slf>
 ```
 
 #### Pose-to-Video Conversion
@@ -72,8 +75,8 @@ text_to_gloss_to_pose \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
   --lexicon <path_to_directory> \
-  --spoken-language <de|fr|it|en> \
-  --signed-language <sgg|gsg|bfi> \
+  --spoken-language <de|fr|it> \
+  --signed-language <sgg|ssr|slf> \
   --pose <output_pose_file_path>.pose
 ```
 
@@ -86,8 +89,8 @@ text_to_gloss_to_pose_to_video \
   --text <input_text> \
   --glosser <simple|rules|nmt> \
   --lexicon <path_to_directory> \
-  --spoken-language <de|fr|it|en> \
-  --signed-language <sgg|gsg|bfi> \
+  --spoken-language <de|fr|it> \
+  --signed-language <sgg|ssr|slf> \
   --video <output_video_file_path>.mp4
 ```
 
@@ -114,13 +117,13 @@ The pipeline consists of three main components:
 
 ## Supported Languages
 
-| Language                   | Lemmatizers Supported              | Lexicon Data Source                                  |
-|----------------------------|------------------------------------|------------------------------------------------------|
-| Swiss German Sign Language | `simple`, `rules`                  | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
-| French Sign Language       | `simple`                           | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
-| Italian Sign Language      | `simple`                           | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
-| German Sign Language       | `simple`, [`nmt`](TODO-model-link) | WordNet (Coming Soon)                                |
-| British Sign Language      | `simple`, [`nmt`](TODO-model-link) | WordNet (Coming Soon)                                |
+| Language                    | IANA Code | Glossers Supported                                                                                                                           | Lexicon Data Source                                  |
+|-----------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| Swiss German Sign Language  | sgg       | `simple`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
+| Swiss French Sign Language  | ssr       | `simple`                                                                                                                                     | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
+| Swiss Italian Sign Language | slf       | `simple`                                                                                                                                     | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
+| German Sign Language        | gsg       | `simple`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)          | WordNet (Coming Soon)                                |
+| British Sign Language       | bfi       | `simple`, [`nmt`](TODO-model-link)                                                                                                           | WordNet (Coming Soon)                                |
 
 
 ## Citation
