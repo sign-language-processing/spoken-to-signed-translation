@@ -9,7 +9,7 @@ from pose_format.numpy import NumPyPoseBody
 from pose_format.utils.reader import BufferReader
 from tqdm import tqdm
 
-LEXICON_INDEX = ['path', 'spoken_language', 'signed_language', 'words', 'glosses', 'priority']
+LEXICON_INDEX = ['path', 'spoken_language', 'signed_language', 'start', 'end', 'words', 'glosses', 'priority']
 
 
 def init_index(index_path: str):
@@ -68,25 +68,40 @@ def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
         }
 
 
-def main(name: str, directory: str):
-    index_path = os.path.join(directory, 'index.csv')
-    os.makedirs(directory, exist_ok=True)
-    init_index(index_path)
+def normalize_row(row: Dict[str, str]):
+    if row['glosses'] == "" and row['words'] != "":
+        from spoken_to_signed.text_to_gloss.simple import text_to_gloss
+        glosses = [g for w, g in text_to_gloss(row['spoken_language'], row['words'])]
+        row['glosses'] = " ".join(glosses)
 
+
+def get_data(name: str, directory: str):
     data_loaders = {
         'signsuisse': load_signsuisse,
     }
     if name not in data_loaders:
         raise NotImplementedError(f"{name} is unknown.")
 
-    data = data_loaders[name](directory)
+    return data_loaders[name](directory)
+
+
+def add_data(data: List[Dict[str, str]], directory: str):
+    index_path = os.path.join(directory, 'index.csv')
+    os.makedirs(directory, exist_ok=True)
+    init_index(index_path)
 
     with open(index_path, 'a', encoding='utf-8', newline='') as file:
         writer = csv.writer(file)
         for row in tqdm(data):
+            normalize_row(row)
             writer.writerow([row[key] for key in LEXICON_INDEX])
 
     print(f"Added entries to {index_path}")
+
+
+def main(name: str, directory: str):
+    data = get_data(name, directory)
+    add_data(data, directory)
 
 
 if __name__ == '__main__':

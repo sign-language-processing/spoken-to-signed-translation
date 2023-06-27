@@ -8,7 +8,6 @@ from spoken_to_signed.text_to_gloss.types import Gloss
 
 
 class PoseLookup:
-
     def __init__(self, directory: str):
         self.directory = directory
 
