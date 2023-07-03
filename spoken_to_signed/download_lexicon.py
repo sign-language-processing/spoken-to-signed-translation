@@ -71,7 +71,7 @@ def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
 def normalize_row(row: Dict[str, str]):
     if row['glosses'] == "" and row['words'] != "":
         from spoken_to_signed.text_to_gloss.simple import text_to_gloss
-        glosses = [g for w, g in text_to_gloss(row['spoken_language'], row['words'])]
+        glosses = [g for w, g in text_to_gloss(text=row['words'], language=row['spoken_language'])]
         row['glosses'] = " ".join(glosses)
 
 
