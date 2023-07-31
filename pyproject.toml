@@ -14,6 +14,7 @@ dependencies = [
     "simplemma", # Used generally for text_to_gloss (in simple_lemmatizer.py)
     "spacy", # used for "rules" text_to_gloss component
     "sentencepiece", # used for "nmt" text_to_gloss component
+    "sign-language-datasets" # used for download_lexicon script
 ]
 
 [project.optional-dependencies]
