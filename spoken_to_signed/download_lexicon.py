@@ -99,15 +99,15 @@ def add_data(data: List[Dict[str, str]], directory: str):
     print(f"Added entries to {index_path}")
 
 
-def main(name: str, directory: str):
-    data = get_data(name, directory)
-    add_data(data, directory)
-
-
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", choices=['signsuisse'], required=True)
     parser.add_argument("--directory", type=str, required=True)
     args = parser.parse_args()
 
-    main(args.name, args.directory)
+    data = get_data(args.name, args.directory)
+    add_data(data, args.directory)
+
+
+if __name__ == '__main__':
+    main()
