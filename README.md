@@ -29,7 +29,12 @@ download_lexicon \
 
 For language codes, we use the [IANA Language Subtag Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry).
 Our pipeline provides multiple scripts. 
+
 To quickly demo it using a dummy lexicon, run:
+
+<a target="_blank" href="https://colab.research.google.com/drive/1UtBmfBIhUa2EdLMnWJr0hxAOZelQ50_9?usp=sharing">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
 
 ```bash
 git clone https://github.com/ZurichNLP/spoken-to-signed-translation
@@ -43,6 +48,8 @@ text_to_gloss_to_pose \
   --signed-language "sgg" \
   --pose "quick_test.pose"
 ```
+
+
 
 #### Text-to-Gloss Translation
 
