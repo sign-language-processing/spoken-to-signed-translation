@@ -1,7 +1,10 @@
 # originally written by Anne Goehring
 # adapted by Mathias Müller
+import functools
 
 import spacy
+import spacy.cli
+
 import sys
 
 from spacy.language import Language
@@ -9,18 +12,19 @@ from typing import Dict, List, Tuple
 
 from .types import Gloss
 
+LANGUAGE_MODELS = {
+    "de": "de_core_news_lg",
+    "fr": "fr_core_news_lg"
+}
 
-def load_spacy_models() -> Dict[str, Language]:
-
-    spacy_models = {
-        "de": spacy.load("de_core_news_lg"),
-        "fr": spacy.load("fr_core_news_lg")
-    }
-
-    return spacy_models
-
-
-spacy_models = load_spacy_models()
+@functools.lru_cache(maxsize=None)
+def load_spacy_model(model_name: str) -> Language:
+    try:
+        return spacy.load(model_name)
+    except OSError:
+        print(f"{model_name} not found. Downloading...")
+        spacy.cli.download(model_name)
+        return spacy.load(model_name)
 
 
 def print_token(token):
@@ -230,7 +234,6 @@ def gloss_de_poss_pronoun(token):
 
 
 def glossify(tokens) -> List[str]:
-
     glosses = []
 
     for t in tokens:
@@ -321,7 +324,6 @@ def clause_to_gloss(clause) -> Tuple[List[str], List[str]]:
 
 
 def text_to_gloss_given_spacy_model(text: str, spacy_model: Language, lang: str = 'de') -> Dict:
-
     if text.strip() == "":
         return {"glosses": [], "tokens": [], "gloss_string": ""}
 
@@ -360,12 +362,12 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model: Language, lang: str 
 
 
 def text_to_gloss(text: str, language: str) -> Gloss:
-
-    try:
-        spacy_model = spacy_models[language]
-    except KeyError:
+    if language not in LANGUAGE_MODELS:
         raise NotImplementedError("Don't know language '%s'." % language)
 
+    model_name = LANGUAGE_MODELS[language]
+
+    spacy_model = load_spacy_model(model_name)
     output_dict = text_to_gloss_given_spacy_model(text, spacy_model=spacy_model, lang=language)
 
     glosses = output_dict["glosses"]
