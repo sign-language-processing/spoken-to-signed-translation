@@ -22,7 +22,11 @@ class PoseLookup:
 
     def read_pose(self, pose_path: str):
         if pose_path.startswith('gs://'):
-            raise NotImplementedError("Can't access pose files from google cloud storage")
+            import gcsfs
+
+            fs = gcsfs.GCSFileSystem(anon=True)
+            with fs.open(pose_path, "rb") as f:
+                return Pose.read(f.read())
 
         if pose_path.startswith('https://'):
             raise NotImplementedError("Can't access pose files from https endpoint")
