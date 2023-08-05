@@ -17,15 +17,18 @@ class PoseLookup:
         self.words_index = self.make_dictionary_index(based_on="words")
         self.glosses_index = self.make_dictionary_index(based_on="glosses")
 
+        self.file_systems = {}
+
     def make_dictionary_index(self, based_on: str):
         return {(d[based_on], d['spoken_language'], d['signed_language']): d for d in self.index}
 
     def read_pose(self, pose_path: str):
         if pose_path.startswith('gs://'):
-            import gcsfs
+            if 'gcs' not in self.file_systems:
+                import gcsfs
+                self.file_systems['gcs'] = gcsfs.GCSFileSystem(anon=True)
 
-            fs = gcsfs.GCSFileSystem(anon=True)
-            with fs.open(pose_path, "rb") as f:
+            with self.file_systems['gcs'].open(pose_path, "rb") as f:
                 return Pose.read(f.read())
 
         if pose_path.startswith('https://'):
