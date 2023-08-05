@@ -11,10 +11,12 @@ dependencies = [
     "pose-format",
     "numpy",
     "scipy", # Used for savgol filter
-    "simplemma", # Used generally for text_to_gloss (in simple_lemmatizer.py)
-    "spacy", # used for "rules" text_to_gloss component
-    "sentencepiece", # used for "nmt" text_to_gloss component
-    "sign-language-datasets" # used for download_lexicon script
+    "simplemma", # Used generally for "simple" text_to_gloss, and in download_lexicon
+    # Optional modules, used in different parts of the pipeline:
+    # "spacy", # used for "rules" text_to_gloss component
+    # "sentencepiece", # used for "nmt" text_to_gloss component
+    # "sockeye==3.1.10", # used for "nmt" text_to_gloss component
+    # "sign-language-datasets" # used for download_lexicon script
 ]
 
 [project.optional-dependencies]

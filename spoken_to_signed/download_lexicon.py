@@ -21,6 +21,11 @@ def init_index(index_path: str):
 
 
 def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
+    try:
+        import sign_language_datasets
+    except ImportError:
+        raise ImportError("Please install sign_language_datasets. pip install sign-language-datasets")
+
     import tensorflow_datasets as tfds
     # noinspection PyUnresolvedReferences
     import sign_language_datasets.datasets.signsuisse as signsuisse
