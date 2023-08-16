@@ -34,6 +34,7 @@ packages = [
     "spoken_to_signed",
     "spoken_to_signed.text_to_gloss",
     "spoken_to_signed.gloss_to_pose",
+    "spoken_to_signed.gloss_to_pose.lookup",
     "spoken_to_signed.pose_to_video"
 ]
 

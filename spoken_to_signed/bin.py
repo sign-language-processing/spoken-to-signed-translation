@@ -3,7 +3,7 @@ import importlib
 
 from pose_format import Pose
 
-from spoken_to_signed.gloss_to_pose import PoseLookup, gloss_to_pose
+from spoken_to_signed.gloss_to_pose import gloss_to_pose, CSVPoseLookup
 from spoken_to_signed.text_to_gloss.types import Gloss
 
 
@@ -13,7 +13,7 @@ def _text_to_gloss(text: str, language: str, glosser: str) -> Gloss:
 
 
 def _gloss_to_pose(gloss: Gloss, lexicon: str, spoken_language: str, signed_language: str) -> Pose:
-    pose_lookup = PoseLookup(lexicon)
+    pose_lookup = CSVPoseLookup(lexicon)
     return gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language)
 
 
