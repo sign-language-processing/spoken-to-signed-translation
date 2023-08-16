@@ -68,6 +68,8 @@ def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
             'spoken_language': spoken_language,
             'signed_language': signed_language,
             'words': words,
+            'start': "0",
+            'end': str(len(pose_body.data) / fps),  # pose duration
             'glosses': "",
             'priority': "",
         }
@@ -76,8 +78,12 @@ def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
 def normalize_row(row: Dict[str, str]):
     if row['glosses'] == "" and row['words'] != "":
         from spoken_to_signed.text_to_gloss.simple import text_to_gloss
-        glosses = [g for w, g in text_to_gloss(text=row['words'], language=row['spoken_language'])]
-        row['glosses'] = " ".join(glosses)
+        try:
+            glosses = [g for w, g in text_to_gloss(text=row['words'], language=row['spoken_language'])]
+            row['glosses'] = " ".join(glosses)
+        except ValueError as e:
+            if not ('Language' in str(e) and 'not supported' in str(e)):
+                raise e
 
 
 def get_data(name: str, directory: str):
