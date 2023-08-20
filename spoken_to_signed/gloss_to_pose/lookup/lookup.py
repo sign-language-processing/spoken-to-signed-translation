@@ -47,7 +47,7 @@ class PoseLookup:
         with open(pose_path, "rb") as f:
             return Pose.read(f.read())
 
-    def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str) -> Pose:
+    def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
         lookup_list = [
             (self.words_index, (spoken_language, signed_language, word)),
             (self.glosses_index, (spoken_language, signed_language, word)),
@@ -65,7 +65,7 @@ class PoseLookup:
 
         raise FileNotFoundError
 
-    def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str):
+    def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None):
         poses: List[Pose] = []
         for word, gloss in glosses:
             try:

@@ -6,9 +6,9 @@ from .concatenate import concatenate_poses
 from .lookup import PoseLookup, CSVPoseLookup
 
 
-def gloss_to_pose(glosses: Gloss, pose_lookup: PoseLookup, spoken_language: str, signed_language: str) -> Pose:
+def gloss_to_pose(glosses: Gloss, pose_lookup: PoseLookup, spoken_language: str, signed_language: str, source: str = None) -> Pose:
     # Transform the list of glosses into a list of poses
-    poses = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language)
+    poses = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source)
 
     # Concatenate the poses to create a single pose
     return concatenate_poses(poses)
