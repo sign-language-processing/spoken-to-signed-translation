@@ -3,11 +3,11 @@
 a `text-to-gloss-to-pose-to-video` pipeline for spoken to signed language translation.
 
 - Demos available for:
-  - 🇩🇪 [Swiss German Sign Language](https://sign.mt/?sil=ch&spl=de) 🇨🇭
-  - 🇫🇷 [French Sign Language of Switzerland](https://sign.mt/?sil=ch&spl=fr)🇨🇭
-  - 🇮🇹 [Italian Sign Language of Switzerland](https://sign.mt/?sil=ch&spl=it) 🇨🇭
+  - 🇩🇪 [Swiss German Sign Language](https://sign.mt/?sil=sgg&spl=de) 🇨🇭
+  - 🇫🇷 [French Sign Language of Switzerland](https://sign.mt/?sil=ssr&spl=fr)🇨🇭
+  - 🇮🇹 [Italian Sign Language of Switzerland](https://sign.mt/?sil=slf&spl=it) 🇨🇭
 
-- Paper available on [arxiv](https://arxiv.org/abs/2305.17714), accepted
+- Paper available on [arxiv](https://arxiv.org/abs/2305.17714), presented
   at [AT4SSL 2023](https://sites.google.com/tilburguniversity.edu/at4ssl2023/).
 
 ![Visualization of our pipeline](assets/pipeline.jpg)
