@@ -1,33 +1,17 @@
 # originally written by Anne Goehring
 # adapted by Mathias Müller
-import functools
 
 import sys
 
 from typing import Dict, List, Tuple
 
 from .types import Gloss
+from .common import load_spacy_model
 
-LANGUAGE_MODELS = {
+LANGUAGE_MODELS_RULES = {
     "de": "de_core_news_lg",
     "fr": "fr_core_news_lg"
 }
-
-
-@functools.lru_cache(maxsize=None)
-def load_spacy_model(model_name: str):
-    try:
-        import spacy
-    except ImportError:
-        raise ImportError("Please install spacy. pip install spacy")
-
-    try:
-        return spacy.load(model_name)
-    except OSError:
-        print(f"{model_name} not found. Downloading...")
-        import spacy.cli
-        spacy.cli.download(model_name)
-        return spacy.load(model_name)
 
 
 def print_token(token):
@@ -365,10 +349,10 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de') ->
 
 
 def text_to_gloss(text: str, language: str) -> Gloss:
-    if language not in LANGUAGE_MODELS:
+    if language not in LANGUAGE_MODELS_RULES:
         raise NotImplementedError("Don't know language '%s'." % language)
 
-    model_name = LANGUAGE_MODELS[language]
+    model_name = LANGUAGE_MODELS_RULES[language]
 
     spacy_model = load_spacy_model(model_name)
     output_dict = text_to_gloss_given_spacy_model(text, spacy_model=spacy_model, lang=language)

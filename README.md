@@ -58,7 +58,7 @@ This script translates input text into gloss notation.
 ```bash
 text_to_gloss \
   --text <input_text> \
-  --glosser <simple|rules|nmt> \
+  --glosser <simple|spacylemma|rules|nmt> \
   --spoken-language <de|fr|it> \
   --signed-language <sgg|ssr|slf>
 ```
@@ -80,7 +80,7 @@ This script translates input text into gloss notation, then converts the glosses
 ```bash
 text_to_gloss_to_pose \
   --text <input_text> \
-  --glosser <simple|rules|nmt> \
+  --glosser <simple|spacylemma|rules|nmt> \
   --lexicon <path_to_directory> \
   --spoken-language <de|fr|it> \
   --signed-language <sgg|ssr|slf> \
@@ -94,7 +94,7 @@ This script translates input text into gloss notation, converts the glosses into
 ```bash
 text_to_gloss_to_pose_to_video \
   --text <input_text> \
-  --glosser <simple|rules|nmt> \
+  --glosser <simple|spacylemma|rules|nmt> \
   --lexicon <path_to_directory> \
   --spoken-language <de|fr|it> \
   --signed-language <sgg|ssr|slf> \
@@ -109,6 +109,7 @@ The pipeline consists of three main components:
    Transforms the input (spoken language) text into a sequence of glosses.
 
 - [Simple lemmatizer](src/text_to_gloss/simple.py),
+- [Spacy lemmatizer: more accurate, but slower lemmatization, covering fewer languages than `simple`](src/text_to_gloss/spacylemma.py),
 - [Rule-based word reordering and dropping](src/text_to_gloss/rules.py) component
 - [Neural machine translation system](src/text_to_gloss/nmt.py).
 
@@ -124,13 +125,13 @@ The pipeline consists of three main components:
 
 ## Supported Languages
 
-| Language                    | IANA Code | Glossers Supported                                                                                                                           | Lexicon Data Source                                  |
-|-----------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| Swiss German Sign Language  | sgg       | `simple`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
-| Swiss French Sign Language  | ssr       | `simple`                                                                                                                                     | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
-| Swiss Italian Sign Language | slf       | `simple`                                                                                                                                     | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
-| German Sign Language        | gsg       | `simple`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)          | WordNet (Coming Soon)                                |
-| British Sign Language       | bfi       | `simple`, [`nmt`](TODO-model-link)                                                                                                           | WordNet (Coming Soon)                                |
+| Language                    | IANA Code | Glossers Supported                                                                                                                                         | Lexicon Data Source                                  |
+|-----------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| Swiss German Sign Language  | sgg       | `simple`, `spacylemma`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
+| Swiss French Sign Language  | ssr       | `simple`, `spacylemma`                                                                                                                                                   | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
+| Swiss Italian Sign Language | slf       | `simple`, `spacylemma`                                                                                                                                                   | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
+| German Sign Language        | gsg       | `simple`, `spacylemma`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)                        | WordNet (Coming Soon)                                |
+| British Sign Language       | bfi       | `simple`, `spacylemma`, [`nmt`](TODO-model-link)                                                                                                                         | WordNet (Coming Soon)                                |
 
 
 ## Citation
