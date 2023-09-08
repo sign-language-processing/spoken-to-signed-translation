@@ -10,7 +10,7 @@ LANGUAGE_MODELS_SPACY = {
 }
 
 
-def text_to_gloss(text: str, language: str, ignore_punctuation: bool = True) -> Gloss:
+def text_to_gloss(text: str, language: str, ignore_punctuation: bool = False) -> Gloss:
 
     if language not in LANGUAGE_MODELS_SPACY:
         raise NotImplementedError("Don't know language '%s'." % language)

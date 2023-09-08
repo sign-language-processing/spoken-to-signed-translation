@@ -23,7 +23,7 @@ def _pose_to_video(pose: Pose, video_path: str):
 
 def _text_input_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--text", type=str, required=True)
-    parser.add_argument("--glosser", choices=['simple', 'rules', 'nmt', 'spacylemma'], required=True)
+    parser.add_argument("--glosser", choices=['simple', 'spacylemma', 'rules', 'nmt'], required=True)
     parser.add_argument("--spoken-language", choices=['de', 'fr', 'it', 'en'], required=True)
     parser.add_argument("--signed-language", choices=['sgg', 'gsg', 'bfi'], required=True)
 
