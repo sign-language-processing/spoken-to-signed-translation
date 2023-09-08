@@ -1,10 +1,10 @@
 import functools
 
-from typing import Optional, List
+from typing import Optional, Tuple
 
 
 @functools.lru_cache(maxsize=None)
-def load_spacy_model(model_name: str, disable: Optional[List[str]] = None):
+def load_spacy_model(model_name: str, disable: Optional[Tuple[str]] = None):
     try:
         import spacy
     except ImportError:
