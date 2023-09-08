@@ -1,7 +1,7 @@
 [project]
 name = "spoken-to-signed"
 description = "Simple pipeline for spoken to signed translation"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
     { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" },
     { name = "Mathias Müller", email = "mmueller@cl.uzh.ch" }
@@ -13,7 +13,7 @@ dependencies = [
     "scipy", # Used for savgol filter
     "simplemma", # Used generally for "simple" text_to_gloss, and in download_lexicon
     # Optional modules, used in different parts of the pipeline:
-    # "spacy", # used for "rules" text_to_gloss component
+    # "spacy", # used for "rules" and "spacylemma" text_to_gloss components
     # "sentencepiece", # used for "nmt" text_to_gloss component
     # "sockeye==3.1.10", # used for "nmt" text_to_gloss component
     # "sign-language-datasets" # used for download_lexicon script
