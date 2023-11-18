@@ -1,5 +1,7 @@
 import argparse
 import importlib
+import os
+import tempfile
 
 from pose_format import Pose
 
@@ -17,8 +19,44 @@ def _gloss_to_pose(gloss: Gloss, lexicon: str, spoken_language: str, signed_lang
     return gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language)
 
 
+def _get_models_dir():
+    home_dir = os.path.expanduser("~")
+    sign_dir = os.path.join(home_dir, ".sign")
+    os.makedirs(sign_dir, exist_ok=True)
+    models_dir = os.path.join(sign_dir, "models")
+    os.makedirs(models_dir, exist_ok=True)
+    return models_dir
+
+
 def _pose_to_video(pose: Pose, video_path: str):
-    pass
+    models_dir = _get_models_dir()
+    pix2pix_path = os.path.join(models_dir, "pix2pix.h5")
+    if not os.path.exists(pix2pix_path):
+        print("Downloading pix2pix model")
+        import urllib.request
+        urllib.request.urlretrieve(
+            "https://firebasestorage.googleapis.com/v0/b/sign-mt-assets/o/models%2Fgenerator%2Fmodel.h5?alt=media",
+            pix2pix_path)
+
+    import subprocess
+
+    try:
+        subprocess.run(["command", "-v", "pose_to_video"], check=True)
+    except subprocess.CalledProcessError:
+        raise RuntimeError(
+            "The command 'pose_to_video' does not exist. Please install the `transcription` package using `pip install git+https://github.com/sign-language-processing/transcription`")
+
+    pose_path = tempfile.mktemp(suffix=".pose")
+    with open(pose_path, "wb") as f:
+        pose.write(f)
+
+    args = ["pose_to_video", "--type=pix_to_pix",
+                    "--model", pix2pix_path,
+                    "--pose", pose_path,
+                    "--video", video_path,
+                    "--upscale"]
+    print(" ".join(args))
+    subprocess.run(args, check=True)
 
 
 def _text_input_arguments(parser: argparse.ArgumentParser):
@@ -76,6 +114,7 @@ def text_to_gloss_to_pose():
 def text_to_gloss_to_pose_to_video():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
+    args_parser.add_argument("--lexicon", type=str, required=True)
     args_parser.add_argument("--video", type=str, required=True)
     args = args_parser.parse_args()
 
