@@ -41,7 +41,7 @@ def _pose_to_video(pose: Pose, video_path: str):
     import subprocess
 
     try:
-        subprocess.run(["command", "-v", "pose_to_video"], check=True)
+        subprocess.run(["command", "-v", "pose_to_video"], shell=True, check=True)
     except subprocess.CalledProcessError:
         raise RuntimeError(
             "The command 'pose_to_video' does not exist. Please install the `transcription` package using `pip install git+https://github.com/sign-language-processing/transcription`")
@@ -56,7 +56,7 @@ def _pose_to_video(pose: Pose, video_path: str):
                     "--video", video_path,
                     "--upscale"]
     print(" ".join(args))
-    subprocess.run(args, check=True)
+    subprocess.run(args, shell=True, check=True)
 
 
 def _text_input_arguments(parser: argparse.ArgumentParser):
