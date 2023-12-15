@@ -50,6 +50,6 @@ testpaths = [
 [project.scripts]
 download_lexicon = "spoken_to_signed.download_lexicon:main"
 text_to_gloss = "spoken_to_signed.bin:text_to_gloss"
-pose_to_video = "spoken_to_signed.bin:pose_to_video"
+#pose_to_video = "spoken_to_signed.bin:pose_to_video"
 text_to_gloss_to_pose = "spoken_to_signed.bin:text_to_gloss_to_pose"
 text_to_gloss_to_pose_to_video = "spoken_to_signed.bin:text_to_gloss_to_pose_to_video"

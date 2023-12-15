@@ -1,6 +1,5 @@
 # originally written by Anne Goehring
 # adapted by Mathias Müller
-
 import sys
 
 from typing import Dict, List, Tuple
@@ -266,17 +265,22 @@ def glossify(tokens) -> List[str]:
     return glosses
 
 
-def clause_to_gloss(clause) -> Tuple[List[str], List[str]]:
+def is_negation(t, lang):
+    return (t.dep_ == "ng") or (lang == "de" and t.lemma_ == "kein")
+
+
+def clause_to_gloss(clause, lang: str) -> Tuple[List[str], List[str]]:
     # Rule 1: Extract subject-verb-object triplets and reorder them
     clause = reorder_svo_triplets(clause)
 
     # Rule 2: Discard all tokens with unwanted PoS
-    tokens = [t for t in clause if t.pos_ in {"NOUN", "PROPN", "VERB", "AUX", "ADJ", "NUM"}
+    tokens = [t for t in clause if t.pos_ in {"NOUN", "VERB", "PROPN", "ADJ", "NUM", "AUX"}
               or (t.pos_ == "ADV" and t.dep_ != "svp")
               or (t.pos_ == "PRON" and t.dep_ != "ep")
-              or t.tag_ in {"PTKNEG", "KON", "PPOSAT"}  # TODO: "PDAT" e.g. gloss("dieses")=IX?
+              or is_negation(t, lang)
+              or (t.tag_ in {"PTKNEG", "KON", "PPOSAT"})  # TODO: "PDAT" e.g. gloss("dieses")=IX?
               or (t.tag_ == "DET" and "Poss=Yes" in t.morph)  # son  son DET DET det ami Number=Sing|Poss=Yes
-              or (t.tag_ == "CCONJ")  # FR: mais
+              or (t.tag_ == "CCONJ" and (lang != 'de' or t.lemma_.lower() != 'und'))  # FR: mais
               ]
 
     # Rule 3: Move adverbs to the start?
@@ -292,9 +296,32 @@ def clause_to_gloss(clause) -> Tuple[List[str], List[str]]:
     tokens = locations + tokens
 
     # Rule 5: Move negation words to the end
-    negations = [t for t in tokens if t.dep_ == "ng"]
+    negations = [t for t in tokens if is_negation(t, lang)]
     tokens = [t for t in tokens if t not in negations]
-    tokens.extend(negations)
+
+    if len(negations) > 0:
+        suffix_tokens = []
+        extra_token_id = len(negations[0].doc)
+        for negation in negations:
+            if lang == "de":
+                from spacy.tokens import Token
+
+                neg_token = Token(negation.vocab, negation.doc, extra_token_id)
+                neg_token.lemma_ = "<neg>"
+                extra_token_id += 1
+
+                neg_close_token = Token(negation.vocab, negation.doc, extra_token_id)
+                neg_close_token.lemma_ = "</neg>"
+                extra_token_id += 1
+                suffix_tokens.append(neg_close_token)
+
+                if negation.lemma_ == "kein":
+                    tokens.append(neg_token)
+                    tokens.append(negation)
+                else:
+                    # add to start of tokens
+                    tokens.insert(0, neg_token)
+        tokens.extend(suffix_tokens)
 
     # TODO: is compound splitting necessary? only taking the first noun loses information!
     # Rule 6: Replace compound nouns with the first noun
@@ -333,7 +360,7 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de') ->
     glossed_clauses = []  # type: List[Dict[str, List[str]]]
 
     for clause in clauses:
-        glosses, tokens = clause_to_gloss(clause)
+        glosses, tokens = clause_to_gloss(clause, lang)
         glosses_all_clauses.extend(glosses)
         tokens_all_clauses.extend(tokens)
         glossed_clauses.append({"glosses": glosses, "tokens": tokens})
