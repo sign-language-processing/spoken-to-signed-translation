@@ -384,22 +384,3 @@ def text_to_gloss(text: str, language: str) -> Gloss:
     tokens = output_dict["tokens"]
 
     return list(zip(tokens, glosses))
-
-
-if __name__ == "__main__":
-    print(" ".join([l for t, l in text_to_gloss("Ich spreche kein Deutsch.", "de")]))
-    print(" ".join([l for t, l in text_to_gloss("Ich spreche nicht Deutsch.", "de")]))
-
-    # Rule 3 should be restricted to temporal adverbs. With the limited vocabulary available, this can be achieved by listing them. This would also eliminate the need to fix numeral recognition: As the Spacy model used is rather weak in recognizing numerals (not even looking at one, but things like einundzwanzig), most numerals would otherwise be moved to the front of the sentence.  If signs like UHR existed, it might become necessary to recognize phrases such as um 11 Uhr and treat them as temporal adverbs.
-    #
-    # Rule 4 is certainly meant to model ground-figure. As there is no information on what lexical items are suitable for ground, the best approximation might be to restrict the rule for case = dative. Unfortunately, that is not available in Spacy either. But then
-    # let us simulate that: APPRART: no g-f. ADP + DET + N and DET is in {die, den, das} for N in singular: no g-f. N in plural: no g-f. Otherwise g-f. If not g-f, do not move to the front of S, but to before the verb.
-    #
-    #
-    #
-    # Rule 5. If DEP(t) = negation and token=~kein*, insert <neg> before kein* and add </neg> to the end of S. Otherwise delete t and insert <neg> at the start of S and add </neg> to the end of S.
-    #
-    #
-    #
-    # Rule 6. …but do not touch <neg> and </neg>.
-    # Cheers, Thomas
