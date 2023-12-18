@@ -265,9 +265,6 @@ def glossify(tokens) -> List[str]:
     return glosses
 
 
-def is_negation(t, lang):
-    return (t.dep_ == "ng") or (lang == "de" and t.lemma_ == "kein")
-
 
 def clause_to_gloss(clause, lang: str) -> Tuple[List[str], List[str]]:
     # Rule 1: Extract subject-verb-object triplets and reorder them
@@ -277,7 +274,7 @@ def clause_to_gloss(clause, lang: str) -> Tuple[List[str], List[str]]:
     tokens = [t for t in clause if t.pos_ in {"NOUN", "VERB", "PROPN", "ADJ", "NUM", "AUX"}
               or (t.pos_ == "ADV" and t.dep_ != "svp")
               or (t.pos_ == "PRON" and t.dep_ != "ep")
-              or is_negation(t, lang)
+              or (t.dep_ == "ng") or (t.lemma_ == "kein")
               or (t.tag_ in {"PTKNEG", "KON", "PPOSAT"})  # TODO: "PDAT" e.g. gloss("dieses")=IX?
               or (t.tag_ == "DET" and "Poss=Yes" in t.morph)  # son  son DET DET det ami Number=Sing|Poss=Yes
               or (t.tag_ == "CCONJ" and (lang != 'de' or t.lemma_.lower() != 'und'))  # FR: mais
@@ -296,32 +293,31 @@ def clause_to_gloss(clause, lang: str) -> Tuple[List[str], List[str]]:
     tokens = locations + tokens
 
     # Rule 5: Move negation words to the end
-    negations = [t for t in tokens if is_negation(t, lang)]
-    tokens = [t for t in tokens if t not in negations]
+    negations = [t for t in tokens if t.dep_ == "ng"]
+    tokens = [t for t in tokens if t not in negations] + negations
 
-    if len(negations) > 0:
-        suffix_tokens = []
-        extra_token_id = len(negations[0].doc)
-        for negation in negations:
-            if lang == "de":
-                from spacy.tokens import Token
+    if lang == "de":
+        from spacy.tokens import Token
 
-                neg_token = Token(negation.vocab, negation.doc, extra_token_id)
-                neg_token.lemma_ = "<neg>"
-                extra_token_id += 1
+        token = tokens[0]
+        extra_token_id = len(token.doc)
 
-                neg_close_token = Token(negation.vocab, negation.doc, extra_token_id)
-                neg_close_token.lemma_ = "</neg>"
-                extra_token_id += 1
-                suffix_tokens.append(neg_close_token)
+        neg_token = Token(token.vocab, token.doc, extra_token_id)
+        neg_token.lemma_ = "<neg>"
+        extra_token_id += 1
 
-                if negation.lemma_ == "kein":
-                    tokens.append(neg_token)
-                    tokens.append(negation)
-                else:
-                    # add to start of tokens
-                    tokens.insert(0, neg_token)
-        tokens.extend(suffix_tokens)
+        neg_close_token = Token(token.vocab, token.doc, extra_token_id)
+        neg_close_token.lemma_ = "</neg>"
+        extra_token_id += 1
+
+        for token in list(tokens):
+            if token.dep_ == "ng":
+                tokens.insert(0, neg_token)
+                tokens.remove(token)
+                tokens.append(neg_close_token)
+            elif token.lemma_ == "kein":
+                tokens.insert(tokens.index(token), neg_token)
+                tokens.append(neg_close_token)
 
     # TODO: is compound splitting necessary? only taking the first noun loses information!
     # Rule 6: Replace compound nouns with the first noun
@@ -388,3 +384,22 @@ def text_to_gloss(text: str, language: str) -> Gloss:
     tokens = output_dict["tokens"]
 
     return list(zip(tokens, glosses))
+
+
+if __name__ == "__main__":
+    print(" ".join([l for t, l in text_to_gloss("Ich spreche kein Deutsch.", "de")]))
+    print(" ".join([l for t, l in text_to_gloss("Ich spreche nicht Deutsch.", "de")]))
+
+    # Rule 3 should be restricted to temporal adverbs. With the limited vocabulary available, this can be achieved by listing them. This would also eliminate the need to fix numeral recognition: As the Spacy model used is rather weak in recognizing numerals (not even looking at one, but things like einundzwanzig), most numerals would otherwise be moved to the front of the sentence.  If signs like UHR existed, it might become necessary to recognize phrases such as um 11 Uhr and treat them as temporal adverbs.
+    #
+    # Rule 4 is certainly meant to model ground-figure. As there is no information on what lexical items are suitable for ground, the best approximation might be to restrict the rule for case = dative. Unfortunately, that is not available in Spacy either. But then
+    # let us simulate that: APPRART: no g-f. ADP + DET + N and DET is in {die, den, das} for N in singular: no g-f. N in plural: no g-f. Otherwise g-f. If not g-f, do not move to the front of S, but to before the verb.
+    #
+    #
+    #
+    # Rule 5. If DEP(t) = negation and token=~kein*, insert <neg> before kein* and add </neg> to the end of S. Otherwise delete t and insert <neg> at the start of S and add </neg> to the end of S.
+    #
+    #
+    #
+    # Rule 6. …but do not touch <neg> and </neg>.
+    # Cheers, Thomas
