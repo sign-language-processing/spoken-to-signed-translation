@@ -296,7 +296,7 @@ def clause_to_gloss(clause, lang: str) -> Tuple[List[str], List[str]]:
     negations = [t for t in tokens if t.dep_ == "ng"]
     tokens = [t for t in tokens if t not in negations] + negations
 
-    if lang == "de":
+    if len(tokens) > 0 and lang == "de":
         from spacy.tokens import Token
 
         token = tokens[0]
