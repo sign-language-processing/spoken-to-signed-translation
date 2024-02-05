@@ -56,6 +56,8 @@ def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
         # Load pose and save to file
         tf_pose = datum['pose']
         fps = int(tf_pose["fps"].numpy())
+        if fps == 0:
+            continue
         pose_body = NumPyPoseBody(fps, tf_pose["data"].numpy(), tf_pose["conf"].numpy())
         pose = Pose(pose_header, pose_body)
         pose_relative_path = os.path.join(signed_language, f"{uid_raw}.pose")
