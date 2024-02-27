@@ -1,11 +1,10 @@
 # originally written by Anne Goehring
 # adapted by Mathias Müller
 import sys
-
 from typing import Dict, List, Tuple
 
-from .types import Gloss
 from .common import load_spacy_model
+from .types import Gloss
 
 LANGUAGE_MODELS_RULES = {
     "de": "de_core_news_lg",
@@ -265,13 +264,13 @@ def glossify(tokens) -> List[str]:
     return glosses
 
 
-
-def clause_to_gloss(clause, lang: str) -> Tuple[List[str], List[str]]:
+def clause_to_gloss(clause, lang: str, punctuation=False) -> Tuple[List[str], List[str]]:
     # Rule 1: Extract subject-verb-object triplets and reorder them
     clause = reorder_svo_triplets(clause)
 
     # Rule 2: Discard all tokens with unwanted PoS
-    tokens = [t for t in clause if t.pos_ in {"NOUN", "VERB", "PROPN", "ADJ", "NUM", "AUX"}
+    tokens = [t for t in clause if t.pos_ in {"NOUN", "VERB", "PROPN", "ADJ", "NUM", "AUX", "SCONJ"}
+              or (punctuation and t.pos_ == "PUNCT")
               or (t.pos_ == "ADV" and t.dep_ != "svp")
               or (t.pos_ == "PRON" and t.dep_ != "ep")
               or (t.dep_ == "ng") or (t.lemma_ == "kein")
@@ -279,6 +278,12 @@ def clause_to_gloss(clause, lang: str) -> Tuple[List[str], List[str]]:
               or (t.tag_ == "DET" and "Poss=Yes" in t.morph)  # son  son DET DET det ami Number=Sing|Poss=Yes
               or (t.tag_ == "CCONJ" and (lang != 'de' or t.lemma_.lower() != 'und'))  # FR: mais
               ]
+
+    # Apply punctuation as its own lemma
+    if punctuation:
+        for t in tokens:
+            if t.pos_ == "PUNCT":
+                t.lemma_ = t.text
 
     # Rule 3: Move adverbs to the start?
     # TODO: Move verb modifying adverbs before the verb in each clause
@@ -333,7 +338,7 @@ def clause_to_gloss(clause, lang: str) -> Tuple[List[str], List[str]]:
     return glosses, tokens
 
 
-def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de') -> Dict:
+def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de', punctuation=False) -> Dict:
     if text.strip() == "":
         return {"glosses": [], "tokens": [], "gloss_string": ""}
 
@@ -356,7 +361,7 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de') ->
     glossed_clauses = []  # type: List[Dict[str, List[str]]]
 
     for clause in clauses:
-        glosses, tokens = clause_to_gloss(clause, lang)
+        glosses, tokens = clause_to_gloss(clause, lang, punctuation=punctuation)
         glosses_all_clauses.extend(glosses)
         tokens_all_clauses.extend(tokens)
         glossed_clauses.append({"glosses": glosses, "tokens": tokens})
@@ -371,14 +376,14 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de') ->
     return {"glosses": glosses_all_clauses, "tokens": tokens_all_clauses, "gloss_string": gloss_string}
 
 
-def text_to_gloss(text: str, language: str) -> Gloss:
+def text_to_gloss(text: str, language: str, punctuation=False) -> Gloss:
     if language not in LANGUAGE_MODELS_RULES:
         raise NotImplementedError("Don't know language '%s'." % language)
 
     model_name = LANGUAGE_MODELS_RULES[language]
 
     spacy_model = load_spacy_model(model_name)
-    output_dict = text_to_gloss_given_spacy_model(text, spacy_model=spacy_model, lang=language)
+    output_dict = text_to_gloss_given_spacy_model(text, spacy_model=spacy_model, lang=language, punctuation=punctuation)
 
     glosses = output_dict["glosses"]
     tokens = output_dict["tokens"]
