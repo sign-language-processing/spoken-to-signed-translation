@@ -13,6 +13,7 @@ dependencies = [
     "scipy", # Used for savgol filter
     "simplemma", # Used generally for "simple" text_to_gloss, and in download_lexicon
     # Optional modules, used in different parts of the pipeline:
+    # "pose_anonymization @ git+https://github.com/sign-language-processing/pose-anonymization", # Used for anonymization
     # "spacy", # used for "rules" and "spacylemma" text_to_gloss components
     # "sentencepiece", # used for "nmt" text_to_gloss component
     # "sockeye==3.1.10", # used for "nmt" text_to_gloss component
