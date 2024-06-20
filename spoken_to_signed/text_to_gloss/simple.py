@@ -1,12 +1,13 @@
 from simplemma import simple_tokenizer
 from simplemma import text_lemmatizer as simple_lemmatizer
-from simplemma.simplemma import LANGLIST
+from simplemma.strategies.dictionaries.dictionary_factory import SUPPORTED_LANGUAGES
+
 
 from .types import Gloss
 
 
 def text_to_gloss(text: str, language: str) -> Gloss:
-    if language not in LANGLIST:
+    if language not in SUPPORTED_LANGUAGES:
         raise ValueError(f"Language {language} not supported")
 
     words = [w.lower() for w in simple_tokenizer(text)]
