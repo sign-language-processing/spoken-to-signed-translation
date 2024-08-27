@@ -61,7 +61,12 @@ class PoseLookup:
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
                         # TODO maybe perform additional string match, for correct casing
-                        return self.read_pose(rows[0]["path"])
+                        selected = rows[0]
+                        pose = self.read_pose(selected["path"])
+                        start_frame = selected["start"] // pose.body.fps
+                        end_frame = selected["end"] // pose.body.fps
+                        return Pose(pose.header, pose.body[start_frame:end_frame])
+
 
         raise FileNotFoundError
 
