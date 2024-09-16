@@ -166,7 +166,7 @@ def translate(text: str,
     }
 
 
-def text_to_gloss(text: str, language: str, nbest_size: int = 3) -> Gloss:
+def text_to_gloss(text: str, language: str, nbest_size: int = 3) -> List[Gloss]:
     if language == "de":
 
         translations_dict = translate(text=text,
@@ -181,4 +181,4 @@ def text_to_gloss(text: str, language: str, nbest_size: int = 3) -> Gloss:
 
     tokens = [None] * len(glosses)
 
-    return list(zip(tokens, glosses))
+    return [list(zip(tokens, glosses))]

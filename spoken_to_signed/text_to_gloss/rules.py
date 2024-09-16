@@ -376,7 +376,7 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de', pu
     return {"glosses": glosses_all_clauses, "tokens": tokens_all_clauses, "gloss_string": gloss_string}
 
 
-def text_to_gloss(text: str, language: str, punctuation=False) -> Gloss:
+def text_to_gloss(text: str, language: str, punctuation=False) -> List[Gloss]:
     if language not in LANGUAGE_MODELS_RULES:
         raise NotImplementedError("Don't know language '%s'." % language)
 
@@ -388,4 +388,4 @@ def text_to_gloss(text: str, language: str, punctuation=False) -> Gloss:
     glosses = output_dict["glosses"]
     tokens = output_dict["tokens"]
 
-    return list(zip(tokens, glosses))
+    return [list(zip(tokens, glosses))]

@@ -81,7 +81,8 @@ def normalize_row(row: Dict[str, str]):
     if row['glosses'] == "" and row['words'] != "":
         from spoken_to_signed.text_to_gloss.simple import text_to_gloss
         try:
-            glosses = [g for w, g in text_to_gloss(text=row['words'], language=row['spoken_language'])]
+            sentences = text_to_gloss(text=row['words'], language=row['spoken_language'])
+            glosses = [g for sentence in sentences for w, g in sentence]
             row['glosses'] = " ".join(glosses)
         except ValueError as e:
             if not ('Language' in str(e) and 'not supported' in str(e)):

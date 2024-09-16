@@ -1,3 +1,5 @@
+from typing import List
+
 from .types import Gloss
 from .common import load_spacy_model
 
@@ -10,7 +12,7 @@ LANGUAGE_MODELS_SPACY = {
 }
 
 
-def text_to_gloss(text: str, language: str, ignore_punctuation: bool = False) -> Gloss:
+def text_to_gloss(text: str, language: str, ignore_punctuation: bool = False) -> List[Gloss]:
 
     if language not in LANGUAGE_MODELS_SPACY:
         raise NotImplementedError("Don't know language '%s'." % language)
@@ -33,4 +35,4 @@ def text_to_gloss(text: str, language: str, ignore_punctuation: bool = False) ->
         gloss = (token.text, token.lemma_)
         glosses.append(gloss)
 
-    return glosses
+    return [glosses]
