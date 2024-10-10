@@ -40,6 +40,7 @@ packages = [
     "spoken_to_signed.gloss_to_pose.lookup",
     "spoken_to_signed.pose_to_video",
 ]
+include-package-data = true
 
 [tool.setuptools.package-data]
 spoken_to_signed = [

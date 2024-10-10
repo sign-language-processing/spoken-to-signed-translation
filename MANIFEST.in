@@ -1,0 +1,2 @@
+recursive-include spoken_to_signed *.pth
+recursive-include spoken_to_signed/assets *
