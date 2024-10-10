@@ -20,9 +20,9 @@ def gloss_to_pose(glosses: Gloss,
     if anonymize:
         try:
             from pose_anonymization.appearance import remove_appearance, transfer_appearance
-        except ImportError:
+        except ImportError as e:
             raise ImportError("Please install pose_anonymization. "
-                              "pip install git+https://github.com/sign-language-processing/pose-anonymization")
+                              "pip install git+https://github.com/sign-language-processing/pose-anonymization") from e
 
         if isinstance(anonymize, Pose):
             print("Transferring appearance...")

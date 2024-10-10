@@ -7,8 +7,8 @@ from typing import Optional, Tuple
 def load_spacy_model(model_name: str, disable: Optional[Tuple[str, ...]] = None):
     try:
         import spacy
-    except ImportError:
-        raise ImportError("Please install spacy. pip install spacy")
+    except ImportError as e:
+        raise ImportError("Please install spacy. pip install spacy") from e
 
     if disable is None:
         disable = []

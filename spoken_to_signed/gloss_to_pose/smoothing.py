@@ -73,7 +73,7 @@ def find_best_connection_point(pose1: Pose, pose2: Pose, window=0.3):
 
 def smooth_concatenate_poses(poses: List[Pose], padding=0.20) -> Pose:
     if len(poses) == 0:
-        raise Exception("No poses to smooth")
+        raise ValueError("No poses to smooth")
 
     if len(poses) == 1:
         return poses[0]

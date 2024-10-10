@@ -21,24 +21,22 @@ class FingerspellingPoseLookup(CSVPoseLookup):
         }
 
     def characters_lookup(self, word: str, spoken_language: str, signed_language: str):
-        if word == "":
-            return None
+        if word != "":
+            rows = self.words_index[spoken_language][signed_language]
+            alphabet = self.alphabets[spoken_language][signed_language]
+            found = False
+            for key in alphabet:
+                if key in word:
+                    found = True
+                    match_index = word.index(key)
 
-        rows = self.words_index[spoken_language][signed_language]
-        alphabet = self.alphabets[spoken_language][signed_language]
-        found = False
-        for key in alphabet:
-            if key in word:
-                found = True
-                match_index = word.index(key)
+                    yield from self.characters_lookup(word[:match_index], spoken_language, signed_language)
+                    yield self.get_pose(rows[key][0])
+                    yield from self.characters_lookup(word[match_index + len(key):], spoken_language, signed_language)
+                    break
 
-                yield from self.characters_lookup(word[:match_index], spoken_language, signed_language)
-                yield self.get_pose(rows[key][0])
-                yield from self.characters_lookup(word[match_index + len(key):], spoken_language, signed_language)
-                break
-
-        if not found:
-            raise FileNotFoundError(f"Characters {word} not found in fingerspelling lexicon")
+            if not found:
+                raise FileNotFoundError(f"Characters {word} not found in fingerspelling lexicon")
 
     def stretch_pose(self, pose: Pose, by: float) -> Pose:
         fps = pose.body.fps
@@ -47,7 +45,7 @@ class FingerspellingPoseLookup(CSVPoseLookup):
         return pose
 
     def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
-        poses = [pose for pose in self.characters_lookup(word, spoken_language, signed_language) if pose is not None]
+        poses = list(self.characters_lookup(word, spoken_language, signed_language))
 
         # hold the last letters longer to make it more readable
         poses[-1] = self.stretch_pose(poses[-1], 2)
