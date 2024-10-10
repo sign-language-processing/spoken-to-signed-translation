@@ -94,7 +94,8 @@ class PoseLookup:
             word, gloss = pair
             try:
                 return self.lookup(word, gloss, spoken_language, signed_language)
-            except FileNotFoundError:
+            except FileNotFoundError as e:
+                print(e)
                 return None
 
         with ThreadPoolExecutor() as executor:

@@ -19,7 +19,7 @@ def download_file_from_gcs(bucket, source_filename, destination_path):
 
 
 # Open the CSV file and process each row
-csv_file_path = Path('index.csv')
+csv_file_path = Path('data.csv')
 
 with csv_file_path.open('r') as csvfile:
     reader = csv.DictReader(csvfile)

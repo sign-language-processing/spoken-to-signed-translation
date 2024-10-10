@@ -45,6 +45,10 @@ class FingerspellingPoseLookup(CSVPoseLookup):
         return pose
 
     def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
+        if spoken_language not in self.words_index or signed_language not in self.words_index[spoken_language]:
+            raise FileNotFoundError(
+                f"Language pair {spoken_language} -> {signed_language} not supported for fingerspelling")
+
         poses = list(self.characters_lookup(word, spoken_language, signed_language))
 
         # hold the last letters longer to make it more readable
