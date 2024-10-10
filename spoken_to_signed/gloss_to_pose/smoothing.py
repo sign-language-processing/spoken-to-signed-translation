@@ -1,3 +1,4 @@
+import math
 from typing import List
 
 import numpy as np
@@ -50,8 +51,9 @@ def concatenate_poses(poses: List[Pose], padding: NumPyPoseBody, interpolation='
 
 
 def find_best_connection_point(pose1: Pose, pose2: Pose, window=0.3):
-    p1_size = int(len(pose1.body.data) * window)
-    p2_size = int(len(pose2.body.data) * window)
+    # window size in seconds, or percentage of the pose, whichever is smaller
+    p1_size = math.ceil(min(window * pose1.body.fps, len(pose1.body.data) * window))
+    p2_size = math.ceil(min(window * pose2.body.fps, len(pose2.body.data) * window))
 
     last_data = pose1.body.data[len(pose1.body.data) - p1_size:]
     first_data = pose2.body.data[:p2_size]
