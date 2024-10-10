@@ -1,15 +1,20 @@
 import math
 import os
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 from pose_format import Pose
 
+from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
 
 
 class PoseLookup:
-    def __init__(self, rows: List, directory: str = None, backup: "PoseLookup" = None):
+    def __init__(self, rows: List,
+                 directory: str = None,
+                 backup: "PoseLookup" = None,
+                 cache: LRUCache = None):
         self.directory = directory
 
         self.words_index = self.make_dictionary_index(rows, based_on="words")
@@ -18,6 +23,7 @@ class PoseLookup:
         self.backup = backup
 
         self.file_systems = {}
+        self.cache = cache if cache is not None else LRUCache()
 
     def make_dictionary_index(self, rows: List, based_on: str):
         # As an attempt to make the index more compact in memory, we store a dictionary with only what we need
@@ -51,7 +57,13 @@ class PoseLookup:
             return Pose.read(f.read())
 
     def get_pose(self, row):
-        pose = self.read_pose(row["path"])
+        # Manage pose cache
+        cached_pose = self.cache.get(row["path"])
+        if cached_pose is None:
+            pose = self.read_pose(row["path"])
+            self.cache.set(row["path"], pose)
+        pose = self.cache.get(row["path"])
+
         start_frame = math.floor(row["start"] // pose.body.fps)
         end_frame = math.ceil(row["end"] // pose.body.fps) if row["end"] > 0 else -1
         return Pose(pose.header, pose.body[start_frame:end_frame])
@@ -78,13 +90,17 @@ class PoseLookup:
         raise FileNotFoundError
 
     def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None):
-        poses: List[Pose] = []
-        for word, gloss in glosses:
+        def lookup_pair(pair):
+            word, gloss = pair
             try:
-                pose = self.lookup(word, gloss, spoken_language, signed_language)
-                poses.append(pose)
+                return self.lookup(word, gloss, spoken_language, signed_language)
             except FileNotFoundError:
-                pass
+                return None
+
+        with ThreadPoolExecutor() as executor:
+            results = executor.map(lookup_pair, glosses)
+
+        poses = [result for result in results if result is not None]  # Filter out None results
 
         if len(poses) == 0:
             gloss_sequence = ' '.join([f"{word}/{gloss}" for word, gloss in glosses])
