@@ -47,6 +47,10 @@ def concatenate_poses(poses: List[Pose], padding: NumPyPoseBody, interpolation='
     new_conf = np.concatenate([pose.body.confidence for pose in poses])
     new_body = NumPyPoseBody(fps=poses[0].body.fps, data=new_data, confidence=new_conf)
     new_body = new_body.interpolate(kind=interpolation)
+
+    # If a point appears in pose1 and pose3 but not pose2, it will be smoothed in pose2, which is ugly
+    # TODO: for every conf, if all of it is 0, update it in the new one
+
     return Pose(header=poses[0].header, body=new_body)
 
 

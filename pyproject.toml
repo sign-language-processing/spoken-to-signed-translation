@@ -34,14 +34,19 @@ column_limit = 120
 [tool.setuptools]
 packages = [
     "spoken_to_signed",
+    "spoken_to_signed.assets",
     "spoken_to_signed.text_to_gloss",
     "spoken_to_signed.gloss_to_pose",
     "spoken_to_signed.gloss_to_pose.lookup",
-    "spoken_to_signed.pose_to_video"
+    "spoken_to_signed.pose_to_video",
 ]
 
 [tool.setuptools.package-data]
-spoken_to_signed = ["*.pth"]
+spoken_to_signed = [
+    "*.pth",
+    "assets/*",
+]
+
 
 [tool.pytest.ini_options]
 addopts = "-v"

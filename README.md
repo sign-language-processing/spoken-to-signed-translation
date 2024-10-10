@@ -41,7 +41,7 @@ git clone https://github.com/ZurichNLP/spoken-to-signed-translation
 cd spoken-to-signed-translation
 
 text_to_gloss_to_pose \
-  --text "Kleine Kinder essen Pizza." \
+  --text "Kleine Kinder essen Pizza in Zürich." \
   --glosser "simple" \
   --lexicon "assets/dummy_lexicon" \
   --spoken-language "de" \

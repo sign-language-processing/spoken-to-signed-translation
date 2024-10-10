@@ -7,6 +7,7 @@ from typing import List
 from pose_format import Pose
 
 from spoken_to_signed.gloss_to_pose import gloss_to_pose, CSVPoseLookup, concatenate_poses
+from spoken_to_signed.gloss_to_pose.lookup.fingerspelling_lookup import FingerspellingPoseLookup
 from spoken_to_signed.text_to_gloss.types import Gloss
 
 
@@ -16,9 +17,12 @@ def _text_to_gloss(text: str, language: str, glosser: str) -> List[Gloss]:
 
 
 def _gloss_to_pose(sentences: List[Gloss], lexicon: str, spoken_language: str, signed_language: str) -> Pose:
-    pose_lookup = CSVPoseLookup(lexicon)
+    fingerspelling_lookup = FingerspellingPoseLookup()
+    pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
     poses = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
-    return concatenate_poses(poses)
+    if len(poses) == 1:
+        return poses[0]
+    return concatenate_poses(poses, trim=False)
 
 
 def _get_models_dir():
@@ -65,7 +69,7 @@ def _text_input_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--text", type=str, required=True)
     parser.add_argument("--glosser", choices=['simple', 'spacylemma', 'rules', 'nmt'], required=True)
     parser.add_argument("--spoken-language", choices=['de', 'fr', 'it', 'en'], required=True)
-    parser.add_argument("--signed-language", choices=['sgg', 'gsg', 'bfi'], required=True)
+    parser.add_argument("--signed-language", choices=['sgg', 'gsg', 'bfi', 'ase'], required=True)
 
 
 def text_to_gloss():
@@ -127,3 +131,6 @@ def text_to_gloss_to_pose_to_video():
     print("Text to gloss to pose to video")
     print("Input text:", args.text)
     print("Output video:", args.video)
+
+if __name__ == "__main__":
+    text_to_gloss_to_pose()

@@ -36,7 +36,7 @@ def trim_pose(pose, start=True, end=True):
     return pose
 
 
-def concatenate_poses(poses: List[Pose]) -> Pose:
+def concatenate_poses(poses: List[Pose], trim=True) -> Pose:
     print('Reducing poses...')
     poses = [reduce_holistic(p) for p in poses]
 
@@ -44,8 +44,9 @@ def concatenate_poses(poses: List[Pose]) -> Pose:
     poses = [normalize_pose(p) for p in poses]
 
     # Trim the poses to only include the parts where the hands are visible
-    print('Trimming poses...')
-    poses = [trim_pose(p, i > 0, i < len(poses) - 1) for i, p in enumerate(poses)]
+    if trim:
+        print('Trimming poses...')
+        poses = [trim_pose(p, i > 0, i < len(poses) - 1) for i, p in enumerate(poses)]
 
     # Concatenate all poses
     print('Smooth concatenating poses...')

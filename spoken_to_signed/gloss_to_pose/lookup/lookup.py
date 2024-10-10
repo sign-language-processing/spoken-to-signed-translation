@@ -1,3 +1,4 @@
+import math
 import os
 from collections import defaultdict
 from typing import List
@@ -8,11 +9,13 @@ from spoken_to_signed.text_to_gloss.types import Gloss
 
 
 class PoseLookup:
-    def __init__(self, rows: List, directory: str = None):
+    def __init__(self, rows: List, directory: str = None, backup: "PoseLookup" = None):
         self.directory = directory
 
         self.words_index = self.make_dictionary_index(rows, based_on="words")
         self.glosses_index = self.make_dictionary_index(rows, based_on="glosses")
+
+        self.backup = backup
 
         self.file_systems = {}
 
@@ -23,8 +26,8 @@ class PoseLookup:
             lower_term = d[based_on].lower()
             languages_dict[d['spoken_language']][d['signed_language']][lower_term].append({
                 "path": d['path'],
-                "start": d['start'],
-                "end": d['end'],
+                "start": int(d['start']),
+                "end": int(d['end']),
             })
         return languages_dict
 
@@ -47,6 +50,12 @@ class PoseLookup:
         with open(pose_path, "rb") as f:
             return Pose.read(f.read())
 
+    def get_pose(self, row):
+        pose = self.read_pose(row["path"])
+        start_frame = math.floor(row["start"] // pose.body.fps)
+        end_frame = math.ceil(row["end"] // pose.body.fps) if row["end"] > 0 else -1
+        return Pose(pose.header, pose.body[start_frame:end_frame])
+
     def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
         lookup_list = [
             (self.words_index, (spoken_language, signed_language, word)),
@@ -61,12 +70,10 @@ class PoseLookup:
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
                         # TODO maybe perform additional string match, for correct casing
-                        selected = rows[0]
-                        pose = self.read_pose(selected["path"])
-                        start_frame = selected["start"] // pose.body.fps
-                        end_frame = selected["end"] // pose.body.fps
-                        return Pose(pose.header, pose.body[start_frame:end_frame])
+                        return self.get_pose(rows[0])
 
+        if self.backup is not None:
+            return self.backup.lookup(word, gloss, spoken_language, signed_language, source)
 
         raise FileNotFoundError
 
