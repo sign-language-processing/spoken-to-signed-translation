@@ -6,6 +6,7 @@ from typing import List
 
 from pose_format import Pose
 
+from spoken_to_signed.gloss_to_pose.languages import LANGUAGE_BACKUP
 from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
 
@@ -29,11 +30,14 @@ class PoseLookup:
         # As an attempt to make the index more compact in memory, we store a dictionary with only what we need
         languages_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         for d in rows:
-            lower_term = d[based_on].lower()
+            term = d[based_on]
+            lower_term = term.lower()
             languages_dict[d['spoken_language']][d['signed_language']][lower_term].append({
                 "path": d['path'],
+                "term": term,
                 "start": int(d['start']),
                 "end": int(d['end']),
+                "priority": int(d['priority']),
             })
         return languages_dict
 
@@ -68,6 +72,16 @@ class PoseLookup:
         end_frame = math.ceil(row["end"] // pose.body.fps) if row["end"] > 0 else -1
         return Pose(pose.header, pose.body[start_frame:end_frame])
 
+    def get_best_row(self, rows, term: str):
+        # Sort by priority: lower is "better"
+        rows = sorted(rows, key=lambda x: x["priority"])
+        # String match exact term
+        for row in rows:
+            if term == row["term"]:
+                return row
+        # Return the highest priority row
+        return rows[0]
+
     def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
         lookup_list = [
             (self.words_index, (spoken_language, signed_language, word)),
@@ -81,9 +95,13 @@ class PoseLookup:
                     lower_term = term.lower()
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
-                        # TODO maybe perform additional string match, for correct casing
-                        return self.get_pose(rows[0])
+                        return self.get_pose(self.get_best_row(rows, term))
 
+        # Backup strategy: revert to backup sign language
+        if signed_language in LANGUAGE_BACKUP:
+            return self.lookup(word, gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source)
+
+        # Backup strategy: revert to fingerspelling
         if self.backup is not None:
             return self.backup.lookup(word, gloss, spoken_language, signed_language, source)
 
