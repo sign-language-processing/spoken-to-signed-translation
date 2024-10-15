@@ -11,7 +11,7 @@ with Path('data.csv').open('r') as data_file:
 for row in rows:
     if row['spoken_language'] == 'en':
         # Duplicate all ASL for french and swiss-french
-        for spoken_language, signed_language in [('fr', 'fsl'), ('fr', 'ssr')]:
+        for spoken_language, signed_language in [('fr', 'fsl')]:
             new_row = row.copy()
             new_row['spoken_language'] = spoken_language
             new_row['signed_language'] = signed_language
