@@ -68,8 +68,9 @@ class PoseLookup:
             self.cache.set(row["path"], pose)
         pose = self.cache.get(row["path"])
 
-        start_frame = math.floor(row["start"] // pose.body.fps)
-        end_frame = math.ceil(row["end"] // pose.body.fps) if row["end"] > 0 else -1
+        frame_time = 1000 / pose.body.fps
+        start_frame = math.floor(row["start"] // frame_time)
+        end_frame = math.ceil(row["end"] // frame_time) if row["end"] > 0 else -1
         return Pose(pose.header, pose.body[start_frame:end_frame])
 
     def get_best_row(self, rows, term: str):
