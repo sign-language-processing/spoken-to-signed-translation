@@ -218,9 +218,7 @@ def gloss_de_poss_pronoun(token):
     return '(' + pposat_map[token.text[0]] + ')'
 
 
-def glossify(tokens) -> List[str]:
-    glosses = []
-
+def glossify(tokens):
     for t in tokens:
         # print_token(t)
 
@@ -259,9 +257,7 @@ def glossify(tokens) -> List[str]:
         # if t.ent_type_ == "LOC" and t.head.pos_ == "ADP":
         #     glosses.append(t.head.text)
 
-        glosses.append(gloss)
-
-    return glosses
+        yield (t.text, gloss)
 
 
 def clause_to_gloss(clause, lang: str, punctuation=False) -> Tuple[List[str], List[str]]:
@@ -269,7 +265,7 @@ def clause_to_gloss(clause, lang: str, punctuation=False) -> Tuple[List[str], Li
     clause = reorder_svo_triplets(clause)
 
     # Rule 2: Discard all tokens with unwanted PoS
-    tokens = [t for t in clause if t.pos_ in {"NOUN", "VERB", "PROPN", "ADJ", "NUM", "AUX", "SCONJ"}
+    tokens = [t for t in clause if t.pos_ in {"NOUN", "VERB", "PROPN", "ADJ", "NUM", "AUX", "SCONJ", "X"}
               or (punctuation and t.pos_ == "PUNCT")
               or (t.pos_ == "ADV" and t.dep_ != "svp")
               or (t.pos_ == "PRON" and t.dep_ != "ep")
@@ -331,11 +327,7 @@ def clause_to_gloss(clause, lang: str, punctuation=False) -> Tuple[List[str], Li
             tokens[i] = t.head
 
     # Rule 7: Glossify all tokens, i.e. lemmatize most tokens
-    glosses = glossify(tokens)
-
-    tokens = [t.text for t in tokens]
-
-    assert len(glosses) == len(tokens), f"len(glosses)={len(glosses)} != len(tokens)={len(tokens)}"
+    glosses, tokens = zip(*list(glossify(tokens)))
 
     return glosses, tokens
 
@@ -364,6 +356,8 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de', pu
 
     for clause in clauses:
         glosses, tokens = clause_to_gloss(clause, lang, punctuation=punctuation)
+        print("glosses", glosses)
+        print("tokens", tokens)
         glosses_all_clauses.extend(glosses)
         tokens_all_clauses.extend(tokens)
         glossed_clauses.append({"glosses": glosses, "tokens": tokens})
