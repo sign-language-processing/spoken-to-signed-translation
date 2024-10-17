@@ -7,8 +7,8 @@ from .common import load_spacy_model
 from .types import Gloss
 
 LANGUAGE_MODELS_RULES = {
-    "de": "de_core_news_lg",
-    "fr": "fr_core_news_lg"
+    "de": ("de_core_news_lg", "de_core_news_md", "de_core_news_sm"),
+    "fr": ("fr_core_news_lg", "fr_core_news_md", "fr_core_news_sm"),
 }
 
 
@@ -382,9 +382,9 @@ def text_to_gloss(text: str, language: str, punctuation=False) -> List[Gloss]:
     if language not in LANGUAGE_MODELS_RULES:
         raise NotImplementedError("Don't know language '%s'." % language)
 
-    model_name = LANGUAGE_MODELS_RULES[language]
+    model_names = LANGUAGE_MODELS_RULES[language]
 
-    spacy_model = load_spacy_model(model_name)
+    spacy_model = load_spacy_model(model_names)
     output_dict = text_to_gloss_given_spacy_model(text, spacy_model=spacy_model, lang=language, punctuation=punctuation)
 
     glosses = output_dict["glosses"]
