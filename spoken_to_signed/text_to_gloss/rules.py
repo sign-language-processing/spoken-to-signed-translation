@@ -255,9 +255,9 @@ def glossify(tokens) -> List[str]:
               or (t.lemma_ == "avoir" and t.pos_ == "AUX")):  # FR
             continue
 
-        # DE: lemma of NER-identified location entities preceded by preposition
-        if t.ent_type_ == "LOC" and t.head.pos_ == "ADP":
-            glosses.append(t.head.text)
+        # # DE: lemma of NER-identified location entities preceded by preposition
+        # if t.ent_type_ == "LOC" and t.head.pos_ == "ADP":
+        #     glosses.append(t.head.text)
 
         glosses.append(gloss)
 
@@ -334,6 +334,8 @@ def clause_to_gloss(clause, lang: str, punctuation=False) -> Tuple[List[str], Li
     glosses = glossify(tokens)
 
     tokens = [t.text for t in tokens]
+
+    assert len(glosses) == len(tokens), f"len(glosses)={len(glosses)} != len(tokens)={len(tokens)}"
 
     return glosses, tokens
 
