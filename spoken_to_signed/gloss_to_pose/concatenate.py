@@ -6,6 +6,9 @@ from pose_format.utils.generic import reduce_holistic, correct_wrists, pose_norm
 
 from .smoothing import smooth_concatenate_poses
 
+class ConcatenationSettings:
+    is_reduce_holistic = True
+
 
 def normalize_pose(pose: Pose) -> Pose:
     return pose.normalize(pose_normalization_info(pose.header))
@@ -37,8 +40,9 @@ def trim_pose(pose, start=True, end=True):
 
 
 def concatenate_poses(poses: List[Pose], trim=True) -> Pose:
-    print('Reducing poses...')
-    poses = [reduce_holistic(p) for p in poses]
+    if ConcatenationSettings.is_reduce_holistic:
+        print('Reducing poses...')
+        poses = [reduce_holistic(p) for p in poses]
 
     print('Normalizing poses...')
     poses = [normalize_pose(p) for p in poses]
