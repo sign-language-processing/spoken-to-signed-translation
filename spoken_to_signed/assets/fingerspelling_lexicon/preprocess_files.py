@@ -14,6 +14,8 @@ ONLY_RIGHT_HAND = {"ase", "sgg", "gsg"}
 
 durations = defaultdict(list)
 
+print("MAKE SURE THIS SCRIPT ONLY RUNS ONCE")
+
 for file in tqdm(Path.cwd().rglob('*.pose')):
     # read the files (597M)
     with open(file, "rb") as f:
@@ -26,13 +28,13 @@ for file in tqdm(Path.cwd().rglob('*.pose')):
     durations[file.parent.name].append(len(pose.body.data) / pose.body.fps)
 
     # Run this transformation only once! floating point instability can change the numbers slightly
-    if pose.body.data.shape[2] != 576:
-        continue
+    # if pose.body.data.shape[2] != 576:
+    #     continue
 
     original_pose = pose
 
-    # reduce holistic (70% saving)
-    pose = reduce_holistic(pose)
+    # # reduce holistic (70% saving)
+    # pose = reduce_holistic(pose)
 
     # normalize, just for good measure
     pose = normalize_pose(pose)
