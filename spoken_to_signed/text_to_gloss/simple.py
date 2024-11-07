@@ -12,7 +12,7 @@ def text_to_gloss(text: str, language: str) -> List[Gloss]:
         words = [w.lower() for w in simple_tokenizer(text)]
         lemmas = [w.lower() for w in simple_lemmatizer(text, lang=language)]
     else:
-        words = lemmas = [text.lower().split(' ')]
+        words = lemmas = text.lower().split(' ')
 
     # TODO add sentence splitting
     return [list(zip(words, lemmas))]
