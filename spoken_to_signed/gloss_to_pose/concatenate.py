@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 from pose_format import Pose
-from pose_format.utils.generic import reduce_holistic, correct_wrists, pose_normalization_info
+from pose_format.utils.generic import reduce_holistic, correct_wrists, pose_normalization_info, normalize_pose_size
 
 from .smoothing import smooth_concatenate_poses
 
@@ -13,13 +13,6 @@ class ConcatenationSettings:
 def normalize_pose(pose: Pose) -> Pose:
     return pose.normalize(pose_normalization_info(pose.header))
 
-
-def scale_normalized_pose(pose: Pose):
-    new_width = 500
-    shift = 1.25
-    shift_vec = np.full(shape=(pose.body.data.shape[-1]), fill_value=shift, dtype=np.float32)
-    pose.body.data = (pose.body.data + shift_vec) * new_width
-    pose.header.dimensions.height = pose.header.dimensions.width = int(new_width * shift * 2)
 
 def trim_pose(pose, start=True, end=True):
     if len(pose.body.data) == 0:
@@ -62,6 +55,6 @@ def concatenate_poses(poses: List[Pose], trim=True) -> Pose:
 
     # Scale the newly created pose
     print('Scaling pose...')
-    scale_normalized_pose(pose)
+    normalize_pose_size(pose)
 
     return pose
