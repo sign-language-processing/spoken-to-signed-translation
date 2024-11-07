@@ -257,7 +257,7 @@ def glossify(tokens):
         # if t.ent_type_ == "LOC" and t.head.pos_ == "ADP":
         #     glosses.append(t.head.text)
 
-        yield (t.text, gloss)
+        yield (gloss, t.text)
 
 
 def clause_to_gloss(clause, lang: str, punctuation=False) -> Tuple[List[str], List[str]]:
