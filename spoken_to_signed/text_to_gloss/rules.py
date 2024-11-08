@@ -293,32 +293,32 @@ def clause_to_gloss(clause, lang: str, punctuation=False) -> Tuple[List[str], Li
     tokens = [t for t in tokens if t not in locations]
     tokens = locations + tokens
 
-    # Rule 5: Move negation words to the end
-    negations = [t for t in tokens if t.dep_ == "ng"]
-    tokens = [t for t in tokens if t not in negations] + negations
-
-    if len(tokens) > 0 and lang == "de":
-        from spacy.tokens import Token
-
-        token = tokens[0]
-        extra_token_id = len(token.doc)
-
-        neg_token = Token(token.vocab, token.doc, extra_token_id)
-        neg_token.lemma_ = "<neg>"
-        extra_token_id += 1
-
-        neg_close_token = Token(token.vocab, token.doc, extra_token_id)
-        neg_close_token.lemma_ = "</neg>"
-        extra_token_id += 1
-
-        for token in list(tokens):
-            if token.dep_ == "ng":
-                tokens.insert(0, neg_token)
-                tokens.remove(token)
-                tokens.append(neg_close_token)
-            elif token.lemma_ == "kein":
-                tokens.insert(tokens.index(token), neg_token)
-                tokens.append(neg_close_token)
+    # # Rule 5: Move negation words to the end
+    # negations = [t for t in tokens if t.dep_ == "ng"]
+    # tokens = [t for t in tokens if t not in negations] + negations
+    #
+    # if len(tokens) > 0 and lang == "de":
+    #     from spacy.tokens import Token
+    #
+    #     token = tokens[0]
+    #     extra_token_id = len(token.doc)
+    #
+    #     neg_token = Token(token.vocab, token.doc, extra_token_id)
+    #     neg_token.lemma_ = "<neg>"
+    #     extra_token_id += 1
+    #
+    #     neg_close_token = Token(token.vocab, token.doc, extra_token_id)
+    #     neg_close_token.lemma_ = "</neg>"
+    #     extra_token_id += 1
+    #
+    #     for token in list(tokens):
+    #         if token.dep_ == "ng":
+    #             tokens.insert(0, neg_token)
+    #             tokens.remove(token)
+    #             tokens.append(neg_close_token)
+    #         elif token.lemma_ == "kein":
+    #             tokens.insert(tokens.index(token), neg_token)
+    #             tokens.append(neg_close_token)
 
     # TODO: is compound splitting necessary? only taking the first noun loses information!
     # Rule 6: Replace compound nouns with the first noun
@@ -356,8 +356,6 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de', pu
 
     for clause in clauses:
         glosses, tokens = clause_to_gloss(clause, lang, punctuation=punctuation)
-        print("glosses", glosses)
-        print("tokens", tokens)
         glosses_all_clauses.extend(glosses)
         tokens_all_clauses.extend(tokens)
         glossed_clauses.append({"glosses": glosses, "tokens": tokens})

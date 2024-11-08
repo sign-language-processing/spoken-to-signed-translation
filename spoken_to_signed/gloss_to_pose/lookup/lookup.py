@@ -111,6 +111,9 @@ class PoseLookup:
     def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None):
         def lookup_pair(pair):
             word, gloss = pair
+            if word == "":
+                return None
+
             try:
                 return self.lookup(word, gloss, spoken_language, signed_language)
             except FileNotFoundError as e:
