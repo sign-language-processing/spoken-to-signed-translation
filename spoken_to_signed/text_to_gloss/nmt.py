@@ -166,7 +166,7 @@ def translate(text: str,
     }
 
 
-def text_to_gloss(text: str, language: str, nbest_size: int = 3) -> List[Gloss]:
+def text_to_gloss(text: str, language: str, nbest_size: int = 3, **kwargs) -> List[Gloss]:
     if language == "de":
 
         translations_dict = translate(text=text,

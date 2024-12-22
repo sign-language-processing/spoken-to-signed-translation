@@ -11,9 +11,9 @@ from spoken_to_signed.gloss_to_pose.lookup.fingerspelling_lookup import Fingersp
 from spoken_to_signed.text_to_gloss.types import Gloss
 
 
-def _text_to_gloss(text: str, language: str, glosser: str) -> List[Gloss]:
+def _text_to_gloss(text: str, language: str, glosser: str, **kwargs) -> List[Gloss]:
     module = importlib.import_module(f"spoken_to_signed.text_to_gloss.{glosser}")
-    return module.text_to_gloss(text=text, language=language)
+    return module.text_to_gloss(text=text, language=language, **kwargs)
 
 
 def _gloss_to_pose(sentences: List[Gloss], lexicon: str, spoken_language: str, signed_language: str) -> Pose:
@@ -124,7 +124,7 @@ def text_to_gloss_to_pose_to_video():
     args_parser.add_argument("--video", type=str, required=True)
     args = args_parser.parse_args()
 
-    sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
+    sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
     pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
     _pose_to_video(pose, args.video)
 

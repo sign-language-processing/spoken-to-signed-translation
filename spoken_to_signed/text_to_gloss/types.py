@@ -1,3 +1,4 @@
 from typing import List, Tuple, Optional
 
-Gloss = List[Tuple[Optional[str], str]]
+GlossItem = Tuple[Optional[str], str] # word, then gloss
+Gloss = List[GlossItem]

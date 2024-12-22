@@ -1,0 +1,83 @@
+[
+  {
+    "spoken_language": "de",
+    "signed_language": "gsg",
+    "text": "Ich habe schöne Erinnerungen an früher.",
+    "sentences": [
+      "⌘früher(FRÜHER/früher) ⌘schön(SCHÖN/schöne) ⌘erinnerung(ERINNERUNG/Erinnerungen)"
+    ],
+    "source": "https://www.sign-lang.uni-hamburg.de/meinedgs/html/1413451-11105600-11163240_de.html#t00000000"
+  },
+  {
+    "spoken_language": "de",
+    "signed_language": "gsg",
+    "text": "Ich habe eher das Gefühl, wenn ich mir vorstelle, dass ich allein bin, dann wäre ich einsam.",
+    "sentences": [
+      "⌘mehr(MEHR/eher) MEIN/mir GEFÜHL/Gefühl ⌘vorstellen(VORSTELLUNG/vorstelle ICH/ich) ⌘allein(ALLEIN/allein ICH/ich) BEREICH GEFÜHL/Gefühl ⌘einsam(VORSTELLUNG/einsam)"
+    ],
+    "source": "https://www.sign-lang.uni-hamburg.de/meinedgs/html/1413451-11105600-11163240_de.html#t00000000"
+  },
+  {
+    "spoken_language": "en",
+    "signed_language": "ase",
+    "text": "Hello. My name is Inigo Montoya. You killed my father. Prepare to die.",
+    "sentences": [
+      "HELLO/Hello",
+      "MY/My NAME/name %(Inigo Montoya)",
+      "YOU/you MY/my FATHER/father KILL/killed",
+      "PREPARE/prepare DIE/die"
+    ],
+    "source": "made up"
+  },
+  {
+    "spoken_language": "en",
+    "signed_language": "ase",
+    "text": "Hello. My name is Inigo Montoya. You killed my father. Prepare to die.",
+    "sentences": [
+      "HELLO/Hello",
+      "MY/My NAME/name %(Inigo Montoya)",
+      "YOU/you MY/my FATHER/father KILL/killed",
+      "PREPARE/prepare DIE/die"
+    ],
+    "source": "made up"
+  },
+  {
+    "spoken_language": "en",
+    "signed_language": "ase",
+    "text": "Our family is large. We had a family reunion last summer. We met at Grandfather’s farm.",
+    "sentences": [
+      "OUR/our FAMILY/family LARGE/large",
+      "PAST/had SUMMER/summer FAMILY/family CONVENE/reunion",
+      "WE/we CONVENE/met GRANDFATHER/Grandfather FARM/farm THERE"
+    ],
+    "source": "The American Sign Language Phrase Book, page 170"
+  },
+  {
+    "spoken_language": "en",
+    "signed_language": "ase",
+    "text": "He never drinks whiskey.",
+    "sentences": [
+      "WHISKEY/whiskey NEVER/never HE/he"
+    ],
+    "source": "The American Sign Language Phrase Book, page 199"
+  },
+  {
+    "spoken_language": "de",
+    "signed_language": "sgg",
+    "text": "Mein Velo ist kaputt, deswegen muss ich es zur Reparatur bringen.",
+    "sentences": [
+      "⌘mein(MEIN/Mein) ⌘velo(VELO/Velo) ⌘b-m(KAPUTT/kaputt)",
+      "ICH/ich MÜSSEN/muss ⌘reparatur(REPARIEREN/Reparatur) BRINGEN/bringen"
+    ],
+    "source": "SMILE II e6_i18_S"
+  },
+  {
+    "spoken_language": "he",
+    "signed_language": "isr",
+    "text": "איפה כואב לך?",
+    "sentences": [
+      "כאב/כואב לך/לך איפה/איפה"
+    ],
+    "source": "https://www.gov.il/BlobFolder/guide/institutions-accessibility/he/subjects_accessibility_israel-sign-language-flyer.pdf"
+  }
+]
