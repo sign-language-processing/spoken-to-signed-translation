@@ -42,31 +42,34 @@ class PoseLookup:
         return languages_dict
 
     def read_pose(self, pose_path: str):
+        cached_pose = self.cache.get(pose_path)
+        if cached_pose is not None:
+            return cached_pose
+
         if pose_path.startswith('gs://'):
             if 'gcs' not in self.file_systems:
                 import gcsfs
                 self.file_systems['gcs'] = gcsfs.GCSFileSystem(anon=True)
 
             with self.file_systems['gcs'].open(pose_path, "rb") as f:
-                return Pose.read(f.read())
+                pose = Pose.read(f.read())
 
-        if pose_path.startswith('https://'):
+        elif pose_path.startswith('https://'):
             raise NotImplementedError("Can't access pose files from https endpoint")
+        else:
+            if self.directory is None:
+                raise ValueError("Can't access pose files without specifying a directory")
 
-        if self.directory is None:
-            raise ValueError("Can't access pose files without specifying a directory")
+            pose_path = os.path.join(self.directory, pose_path)
+            with open(pose_path, "rb") as f:
+                pose = Pose.read(f.read())
 
-        pose_path = os.path.join(self.directory, pose_path)
-        with open(pose_path, "rb") as f:
-            return Pose.read(f.read())
+        self.cache.set(pose_path, pose)
+        return pose
 
     def get_pose(self, row):
         # Manage pose cache
-        cached_pose = self.cache.get(row["path"])
-        if cached_pose is None:
-            pose = self.read_pose(row["path"])
-            self.cache.set(row["path"], pose)
-        pose = self.cache.get(row["path"])
+        pose = self.read_pose(row["path"])
 
         frame_time = 1000 / pose.body.fps
         start_frame = math.floor(row["start"] // frame_time)
