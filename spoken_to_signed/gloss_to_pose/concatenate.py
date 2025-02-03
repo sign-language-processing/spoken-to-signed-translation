@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from pose_format import Pose
 from pose_format.utils.generic import reduce_holistic, correct_wrists, pose_normalization_info, normalize_pose_size
 
-from .smoothing import smooth_concatenate_poses
+from spoken_to_signed.gloss_to_pose.smoothing import smooth_concatenate_poses
 
 class ConcatenationSettings:
     is_reduce_holistic = True
@@ -14,21 +14,47 @@ def normalize_pose(pose: Pose) -> Pose:
     return pose.normalize(pose_normalization_info(pose.header))
 
 
+def get_signing_boundary(pose: Pose, wrist_index: int, elbow_index: int) -> Tuple[int, int]:
+    # Ideally, this could use a sign language detection model.
+
+    pose_length = len(pose.body.data)
+
+    wrist_exists = pose.body.confidence[:, 0, wrist_index] > 0
+    first_non_zero_index = np.argmax(wrist_exists).tolist()
+    last_non_zero_index = pose_length - np.argmax(wrist_exists[::-1])
+
+    wrist_y = pose.body.data[:, 0, wrist_index, 1]
+    elbow_y = pose.body.data[:, 0, elbow_index, 1]
+
+    wrist_above_elbow = wrist_y < elbow_y
+    first_active_frame = np.argmax(wrist_above_elbow).tolist()
+    last_active_frame = pose_length - np.argmax(wrist_above_elbow[::-1])
+
+    return (max(first_non_zero_index, first_active_frame - 5),
+            min(last_non_zero_index, last_active_frame + 5))
+
 def trim_pose(pose, start=True, end=True):
     if len(pose.body.data) == 0:
         raise ValueError("Cannot trim an empty pose")
 
-    wrist_indexes = [
-        pose.header._get_point_index('LEFT_HAND_LANDMARKS', 'WRIST'),
-        pose.header._get_point_index('RIGHT_HAND_LANDMARKS', 'WRIST')
-    ]
-    either_hand = pose.body.confidence[:, 0, wrist_indexes].sum(axis=1) > 0
+    first_frame = len(pose.body.data)
+    last_frame = 0
 
-    first_non_zero_index = np.argmax(either_hand) if start else 0
-    last_non_zero_index = (len(either_hand) - np.argmax(either_hand[::-1])) if end else len(either_hand)
+    hands = ["LEFT", "RIGHT"]
+    for hand in hands:
+        wrist_index = pose.header._get_point_index(f"POSE_LANDMARKS", f"{hand}_WRIST")
+        elbow_index = pose.header._get_point_index(f"POSE_LANDMARKS", f"{hand}_ELBOW")
+        boundary_start, boundary_end = get_signing_boundary(pose, wrist_index, elbow_index)
+        first_frame = min(first_frame, boundary_start)
+        last_frame = max(last_frame, boundary_end)
 
-    pose.body.data = pose.body.data[first_non_zero_index:last_non_zero_index]
-    pose.body.confidence = pose.body.confidence[first_non_zero_index:last_non_zero_index]
+    if not start:
+        first_frame = 0
+    if not end:
+        last_frame = len(pose.body.data)
+
+    pose.body.data = pose.body.data[first_frame:last_frame]
+    pose.body.confidence = pose.body.confidence[first_frame:last_frame]
     return pose
 
 
