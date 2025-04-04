@@ -2,6 +2,7 @@ import argparse
 import importlib
 import os
 import tempfile
+from itertools import chain
 from typing import List
 
 from pose_format import Pose
@@ -50,7 +51,8 @@ def _pose_to_video(pose: Pose, video_path: str):
         subprocess.run(["command", "-v", "pose_to_video"], shell=True, check=True)
     except subprocess.CalledProcessError:
         raise RuntimeError(
-            "The command 'pose_to_video' does not exist. Please install the `transcription` package using `pip install git+https://github.com/sign-language-processing/transcription`")
+            "The command 'pose_to_video' does not exist. Please install the `transcription` package using "
+            "`pip install git+https://github.com/sign-language-processing/transcription`")
 
     pose_path = tempfile.mktemp(suffix=".pose")
     with open(pose_path, "wb") as f:
@@ -68,8 +70,21 @@ def _pose_to_video(pose: Pose, video_path: str):
 def _text_input_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--text", type=str, required=True)
     parser.add_argument("--glosser", choices=['simple', 'spacylemma', 'rules', 'nmt'], required=True)
-    parser.add_argument("--spoken-language", choices=['de', 'fr', 'it', 'en'], required=True)
-    parser.add_argument("--signed-language", choices=['sgg', 'gsg', 'bfi', 'ase'], required=True)
+
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument("--lexicon", type=str)
+    pre_args, _ = pre_parser.parse_known_args()
+
+    if pre_args.lexicon:
+        lookup = CSVPoseLookup(pre_args.lexicon)
+        spoken_languages = list(lookup.words_index.keys())
+        signed_languages = set(chain.from_iterable(lookup.words_index[lang].keys() for lang in spoken_languages))
+    else:
+        spoken_languages = ['de', 'fr', 'it', 'en']
+        signed_languages = ['sgg', 'gsg', 'bfi', 'ase']
+
+    parser.add_argument("--spoken-language", choices=spoken_languages, required=True)
+    parser.add_argument("--signed-language", choices=signed_languages, required=True)
 
 
 def text_to_gloss():
@@ -131,6 +146,7 @@ def text_to_gloss_to_pose_to_video():
     print("Text to gloss to pose to video")
     print("Input text:", args.text)
     print("Output video:", args.video)
+
 
 if __name__ == "__main__":
     text_to_gloss_to_pose()
