@@ -32,18 +32,6 @@
   {
     "spoken_language": "en",
     "signed_language": "ase",
-    "text": "Hello. My name is Inigo Montoya. You killed my father. Prepare to die.",
-    "sentences": [
-      "HELLO/Hello",
-      "MY/My NAME/name %(Inigo Montoya)",
-      "YOU/you MY/my FATHER/father KILL/killed",
-      "PREPARE/prepare DIE/die"
-    ],
-    "source": "made up"
-  },
-  {
-    "spoken_language": "en",
-    "signed_language": "ase",
     "text": "Our family is large. We had a family reunion last summer. We met at Grandfather’s farm.",
     "sentences": [
       "OUR/our FAMILY/family LARGE/large",

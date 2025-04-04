@@ -31,6 +31,16 @@ dev = [
 based_on_style = "google"
 column_limit = 120
 
+[tool.pylint]
+max-line-length = 120
+disable = [
+    "C0114", # Missing module docstring
+    "C0115", # Missing class docstring
+    "C0116", # Missing function or method docstring
+    "C0415", # Import outside toplevel
+    "R0917", # Too many positional arguments
+]
+
 [tool.setuptools]
 packages = [
     "spoken_to_signed",

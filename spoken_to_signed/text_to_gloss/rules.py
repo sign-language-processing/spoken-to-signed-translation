@@ -118,7 +118,7 @@ def swap(tokens, token_a, token_b):
     # move the verb
     if token_a.head == token_b:
         verb = token_b
-        subtree = [t for t in token_a.subtree]
+        subtree = list(token_a.subtree)
         # print('move the verb after the subtree', file=sys.stderr)
         insubtree = False
         for t in tokens:
@@ -135,7 +135,7 @@ def swap(tokens, token_a, token_b):
 
     elif token_b.head == token_a:
         verb = token_a
-        subtree = [t for t in token_b.subtree]
+        subtree = list(token_b.subtree)
         put_a = False
         # print('move the verb before the subtree', file=sys.stderr)
         for t in tokens:
@@ -147,8 +147,8 @@ def swap(tokens, token_a, token_b):
             new_tokens.append(t)
     else:
         # print('swap the subject and the object', file=sys.stderr)
-        subtree_a = [t for t in token_a.subtree]
-        subtree_b = [t for t in token_b.subtree]
+        subtree_a = list(token_a.subtree)
+        subtree_b = list(token_b.subtree)
         put_a = False
         for t in [t for t in tokens if t not in subtree_a]:
             if t in subtree_b and not put_a:
@@ -361,7 +361,7 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de', pu
         glossed_clauses.append({"glosses": glosses, "tokens": tokens})
 
     # clause separator "|" and end of sentence "||"
-    gloss_string = " | ".join([" ".join([g for g in clause["glosses"]]) for clause in glossed_clauses])
+    gloss_string = " | ".join([" ".join(list(clause["glosses"])) for clause in glossed_clauses])
     gloss_string += " ||"
 
     # Final Rule: Begin sequence with a capital
@@ -370,7 +370,7 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = 'de', pu
     return {"glosses": glosses_all_clauses, "tokens": tokens_all_clauses, "gloss_string": gloss_string}
 
 
-def text_to_gloss(text: str, language: str, punctuation=False, **kwargs) -> List[Gloss]:
+def text_to_gloss(text: str, language: str, punctuation=False, **unused_kwargs) -> List[Gloss]:
     if language not in LANGUAGE_MODELS_RULES:
         raise NotImplementedError("Don't know language '%s'." % language)
 
