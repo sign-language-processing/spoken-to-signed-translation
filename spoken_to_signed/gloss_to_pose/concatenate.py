@@ -27,6 +27,8 @@ def get_signing_boundary(pose: Pose, wrist_index: int, elbow_index: int) -> Tupl
     elbow_y = pose.body.data[:, 0, elbow_index, 1]
 
     wrist_above_elbow = wrist_y < elbow_y
+    if not np.any(wrist_above_elbow):
+        return None, None
     first_active_frame = np.argmax(wrist_above_elbow).tolist()
     last_active_frame = pose_length - np.argmax(wrist_above_elbow[::-1])
 
@@ -37,16 +39,24 @@ def trim_pose(pose, start=True, end=True):
     if len(pose.body.data) == 0:
         raise ValueError("Cannot trim an empty pose")
 
-    first_frame = len(pose.body.data)
-    last_frame = 0
+    first_frames = []
+    last_frames = []
 
     hands = ["LEFT", "RIGHT"]
     for hand in hands:
         wrist_index = pose.header._get_point_index(f"POSE_LANDMARKS", f"{hand}_WRIST")
         elbow_index = pose.header._get_point_index(f"POSE_LANDMARKS", f"{hand}_ELBOW")
         boundary_start, boundary_end = get_signing_boundary(pose, wrist_index, elbow_index)
-        first_frame = min(first_frame, boundary_start)
-        last_frame = max(last_frame, boundary_end)
+        if boundary_start is not None:
+            first_frames.append(boundary_start)
+        if boundary_end is not None:
+            last_frames.append(boundary_end)
+
+    if len(first_frames) == 0:
+        return pose
+    
+    first_frame = min(first_frames)
+    last_frame = max(last_frames)
 
     if not start:
         first_frame = 0
