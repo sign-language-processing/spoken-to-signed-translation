@@ -18,13 +18,6 @@ a `text-to-gloss-to-pose-to-video` pipeline for spoken to signed language transl
 pip install git+https://github.com/ZurichNLP/spoken-to-signed-translation.git
 ```
 
-Then, to download a lexicon, run:
-```bash
-download_lexicon \
-  --name <signsuisse> \
-  --directory <path_to_directory>
-```
-
 ## Usage
 
 For language codes, we use the [IANA Language Subtag Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry).
@@ -127,9 +120,9 @@ The pipeline consists of three main components:
 
 | Language                    | IANA Code | Glossers Supported                                                                                                                                         | Lexicon Data Source                                  |
 |-----------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| Swiss German Sign Language  | sgg       | `simple`, `spacylemma`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
-| Swiss French Sign Language  | ssr       | `simple`, `spacylemma`                                                                                                                                                   | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
-| Swiss Italian Sign Language | slf       | `simple`, `spacylemma`                                                                                                                                                   | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
+| Swiss German Sign Language  | sgg       | `simple`, `spacylemma`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) | WordNet (Coming Soon)                                |
+| Swiss French Sign Language  | ssr       | `simple`, `spacylemma`                                                                                                                                                   | WordNet (Coming Soon)                                |
+| Swiss Italian Sign Language | slf       | `simple`, `spacylemma`                                                                                                                                                   | WordNet (Coming Soon)                                |
 | German Sign Language        | gsg       | `simple`, `spacylemma`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)                        | WordNet (Coming Soon)                                |
 | British Sign Language       | bfi       | `simple`, `spacylemma`, [`nmt`](TODO-model-link)                                                                                                                         | WordNet (Coming Soon)                                |
 

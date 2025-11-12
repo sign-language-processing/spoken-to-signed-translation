@@ -11,13 +11,12 @@ dependencies = [
     "pose-format>=0.4.1",
     "numpy",
     "scipy", # Used for savgol filter
-    "simplemma>=1.0.0", # Used generally for "simple" text_to_gloss, and in download_lexicon
+    "simplemma>=1.0.0", # Used for "simple" text_to_gloss
     # Optional modules, used in different parts of the pipeline:
     # "pose_anonymization @ git+https://github.com/sign-language-processing/pose-anonymization", # Used for anonymization
     # "spacy", # used for "rules" and "spacylemma" text_to_gloss components
     # "sentencepiece", # used for "nmt" text_to_gloss component
     # "sockeye==3.1.10", # used for "nmt" text_to_gloss component
-    # "sign-language-datasets" # used for download_lexicon script
     # "gcsfs", # When files are stored on Google Cloud Storage
 ]
 
@@ -66,7 +65,6 @@ testpaths = [
 ]
 
 [project.scripts]
-download_lexicon = "spoken_to_signed.download_lexicon:main"
 text_to_gloss = "spoken_to_signed.bin:text_to_gloss"
 #pose_to_video = "spoken_to_signed.bin:pose_to_video"
 text_to_gloss_to_pose = "spoken_to_signed.bin:text_to_gloss_to_pose"
