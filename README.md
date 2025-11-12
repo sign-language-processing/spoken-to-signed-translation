@@ -118,13 +118,13 @@ The pipeline consists of three main components:
 
 ## Supported Languages
 
-| Language                    | IANA Code | Glossers Supported                                                                                                                                         | Lexicon Data Source                                  |
-|-----------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| Swiss German Sign Language  | sgg       | `simple`, `spacylemma`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) | WordNet (Coming Soon)                                |
-| Swiss French Sign Language  | ssr       | `simple`, `spacylemma`                                                                                                                                                   | WordNet (Coming Soon)                                |
-| Swiss Italian Sign Language | slf       | `simple`, `spacylemma`                                                                                                                                                   | WordNet (Coming Soon)                                |
-| German Sign Language        | gsg       | `simple`, `spacylemma`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)                        | WordNet (Coming Soon)                                |
-| British Sign Language       | bfi       | `simple`, `spacylemma`, [`nmt`](TODO-model-link)                                                                                                                         | WordNet (Coming Soon)                                |
+| Language                    | IANA Code | Glossers Supported                                                                                                                                         |
+|-----------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Swiss German Sign Language  | sgg       | `simple`, `spacylemma`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) |
+| Swiss French Sign Language  | ssr       | `simple`, `spacylemma`                                                                                                                                     |
+| Swiss Italian Sign Language | slf       | `simple`, `spacylemma`                                                                                                                                     |
+| German Sign Language        | gsg       | `simple`, `spacylemma`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)          |
+| British Sign Language       | bfi       | `simple`, `spacylemma`, [`nmt`](TODO-model-link)                                                                                                           |
 
 
 ## Citation
