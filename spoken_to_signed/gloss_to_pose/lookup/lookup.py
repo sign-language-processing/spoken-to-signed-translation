@@ -259,7 +259,7 @@ class PoseLookup:
             else:
                 log(f"[GLOSS '{original_gloss}'] Attempting with fingerspelling backup")
 
-            return self.backup.lookup(word, original_gloss, spoken_language, signed_language, source, verbose=verbose)
+            return self.backup.lookup(word, original_gloss, spoken_language, signed_language, source)
 
         # If everything fails:
         raise FileNotFoundError(
