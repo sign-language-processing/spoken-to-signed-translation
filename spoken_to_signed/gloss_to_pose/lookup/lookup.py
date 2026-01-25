@@ -34,27 +34,6 @@ def preprocess_keep_letters_only(s: str) -> str:
     """Keep only Unicode letters."""
     return "".join(ch for ch in s if ch.isalpha())
 
-def normalize_token_modular(
-    s: str,
-    do_rule_based: bool = False,
-    do_spacylemma: bool = False,
-    do_letters_only: bool = False
-) -> str:
-    """Replicates normalize_token but using modular functions."""
-    
-    s = preprocess_lower_strip(s)
-
-    if do_rule_based:
-        s = preprocess_rule_based(s)
-
-    if do_spacylemma:
-        s = preprocess_spacylemma(s)
-
-    if do_letters_only:
-        s = preprocess_keep_letters_only(s)
-
-    return s
-
 def preprocess_integer_with_punctuation(s: str) -> str:
     """
     Normalize integer tokens ONLY when digits are not part of an alphanumeric word
@@ -129,8 +108,8 @@ class PoseLookup:
             languages_dict[d['spoken_language']][d['signed_language']][lower_term].append({
                 "path": d['path'],
                 "term": term,
-                "start": float(d['start']), #int(d['start']),
-                "end": float(d['end']), #int(d['end']),
+                "start": float(d['start']),
+                "end": float(d['end']),
                 "priority": int(d['priority']),
             })
         return languages_dict
@@ -188,7 +167,12 @@ class PoseLookup:
         # Return the highest priority row
         return rows[0]
 
-    def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
+    def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None, verbose: bool = False) -> Pose:
+
+        def log(msg: str):
+            if verbose:
+                print(msg)
+
         # List of progressive transformations applied ONLY in the main language
         preprocess_steps = [
             None,                           # original attempt
@@ -209,7 +193,7 @@ class PoseLookup:
             if step_fn is not None:
                 current_gloss = step_fn(current_gloss)
 
-            print(f"[GLOSS '{original_gloss}'] [STEP #{step_idx}] Trying lookup with current_gloss='{current_gloss}'")
+            log(f"[GLOSS '{original_gloss}'] [STEP #{step_idx}] Trying lookup with current_gloss='{current_gloss}'")
 
             lookup_list = [
                 (self.words_index,   (spoken_language, signed_language, word)),
@@ -217,36 +201,35 @@ class PoseLookup:
                 (self.glosses_index, (spoken_language, signed_language, current_gloss)),
             ]
 
-            found = False
             for dict_index, (sp_lang, sg_lang, term) in lookup_list:
                 if sp_lang in dict_index:
                     if sg_lang in dict_index[sp_lang]:
                         lower_term = term.lower()
                         if lower_term in dict_index[sp_lang][sg_lang]:
                             rows = dict_index[sp_lang][sg_lang][lower_term]
-                            print(f"[SUCCESS] Found entry for term='{term}' (lower='{lower_term}') "
-                                f"with gloss_version='{current_gloss}'\n")
+                            log(
+                                f"[SUCCESS] Found entry for term='{term}' (lower='{lower_term}') "
+                                f"with gloss_version='{current_gloss}'\n"
+                            )
                             return self.get_pose(self.get_best_row(rows, term))
 
             # If we reached here, this step has failed
-            # Prepare a message indicating what will be tried next
             next_msg = ""
 
-            # Is there a next preprocessing step?
             if step_idx + 1 < len(preprocess_steps):
                 next_step_fn = preprocess_steps[step_idx + 1]
                 if next_step_fn is not None:
-                    # Preview the next version WITHOUT modifying current_gloss
                     preview_gloss = next_step_fn(current_gloss)
                     next_msg = f" Trying next gloss version: '{preview_gloss}'."
                 else:
-                    # The next step is the "no-change" attempt (just advance the index)
                     next_msg = " Trying next lookup configuration."
             else:
-                # No more local steps, will move to backups
                 next_msg = " No more preprocessing steps. Will try backup strategies (if available)."
 
-            print(f"[GLOSS '{original_gloss}'] [FAIL #{step_idx}] Lookup failed for gloss='{current_gloss}'.{next_msg}")
+            log(
+                f"[GLOSS '{original_gloss}'] [FAIL #{step_idx}] "
+                f"Lookup failed for gloss='{current_gloss}'.{next_msg}"
+            )
 
         # =============================
         # BACKUP STRATEGIES (USE ORIGINAL GLOSS)
@@ -256,25 +239,32 @@ class PoseLookup:
         if signed_language in LANGUAGE_BACKUP:
             if should_normalize_integer_token(original_gloss):
                 word = preprocess_integer_with_punctuation(word)
-                print(f"[GLOSS '{original_gloss}'] Attempting with secondary language backup, using '{word}' as word.")
+                log(
+                    f"[GLOSS '{original_gloss}'] Attempting with secondary language backup, "
+                    f"using '{word}' as word."
+                )
             else:
-                print(f"[GLOSS '{original_gloss}'] Attempting with secondary language backup")
-            return self.lookup(word, original_gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source)
+                log(f"[GLOSS '{original_gloss}'] Attempting with secondary language backup")
+
+            return self.lookup(word, original_gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source, verbose=verbose)
 
         # 2) Backup to fingerspelling using ORIGINAL gloss
         if self.backup is not None:
             if should_normalize_integer_token(original_gloss):
                 word = preprocess_integer_with_punctuation(word)
-                print(f"[GLOSS '{original_gloss}'] Attempting with fingerspelling backup, using '{word}' as word.")
+                log(
+                    f"[GLOSS '{original_gloss}'] Attempting with fingerspelling backup, "
+                    f"using '{word}' as word."
+                )
             else:
-                print(f"[GLOSS '{original_gloss}'] Attempting with fingerspelling backup")
-            return self.backup.lookup(word, original_gloss, spoken_language, signed_language, source)
+                log(f"[GLOSS '{original_gloss}'] Attempting with fingerspelling backup")
+
+            return self.backup.lookup(word, original_gloss, spoken_language, signed_language, source, verbose=verbose)
 
         # If everything fails:
         raise FileNotFoundError(
             f"Could not resolve word='{word}' gloss='{gloss}' even after preprocessing and backups."
         )
-
 
     def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None, coverage_info: bool = False):
         def lookup_pair(pair):

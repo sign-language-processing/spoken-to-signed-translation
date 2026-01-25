@@ -22,7 +22,7 @@ def add_coverage_to_pose_path(pose_path: str, coverage: str) -> str:
     """
     Given an absolute pose file path and a coverage string (e.g. '0.900'),
     return a new path where coverage is appended to the filename using
-    dot-free formatting (option 3).
+    dot-free formatting.
 
     Example:
         pose_path = "/home/user/whatever.pose"
@@ -191,7 +191,7 @@ def text_to_gloss_to_pose():
         args.lexicon,
         args.spoken_language,
         args.signed_language,
-        args.coverage_info if args.coverage_info else None,
+        args.coverage_info,
         use_fingerspelling,
     )
 

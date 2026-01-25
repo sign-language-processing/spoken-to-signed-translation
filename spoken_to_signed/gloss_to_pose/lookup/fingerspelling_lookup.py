@@ -37,8 +37,6 @@ class FingerspellingPoseLookup(CSVPoseLookup):
 
             if not found:
                 raise FileNotFoundError(f"[WARN] Characters {word} not found in fingerspelling lexicon")
-            else:
-                print(f"[SUCCESS] fingerspelling for: {word} FOUND!")
 
     def stretch_pose(self, pose: Pose, by: float) -> Pose:
         fps = pose.body.fps
