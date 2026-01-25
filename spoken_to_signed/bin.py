@@ -2,8 +2,9 @@ import argparse
 import importlib
 import os
 import tempfile
+from pathlib import Path
 from itertools import chain
-from typing import List
+from typing import List, Tuple, Union
 
 from pose_format import Pose
 
@@ -17,13 +18,41 @@ def _text_to_gloss(text: str, language: str, glosser: str, **kwargs) -> List[Glo
     return module.text_to_gloss(text=text, language=language, **kwargs)
 
 
-def _gloss_to_pose(sentences: List[Gloss], lexicon: str, spoken_language: str, signed_language: str) -> Pose:
+def add_coverage_to_pose_path(pose_path: str, coverage: str) -> str:
+    """
+    Append coverage info to a pose filename.
+
+    Example:
+        /path/sample.pose + 0.900 → /path/sample_cov0_900.pose
+    """
+    path = Path(pose_path)
+    coverage_token = coverage.replace(".", "_")
+    return str(path.with_name(f"{path.stem}_cov{coverage_token}{path.suffix}"))
+
+
+def _gloss_to_pose(sentences: List[Gloss], lexicon: str, spoken_language: str, signed_language: str, coverage_info: bool = False) -> Union[Pose, Tuple[Pose, str]]:
     fingerspelling_lookup = FingerspellingPoseLookup()
     pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
-    poses = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
-    if len(poses) == 1:
-        return poses[0]
-    return concatenate_poses(poses, trim=False)
+
+    results = [
+        gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language, coverage_info=coverage_info)
+        for gloss in sentences
+    ]
+
+    # --- Backward-compatible path (original behavior) ---
+    if not coverage_info:
+        poses = results # gloss_to_pose returns Pose
+        return poses[0] if len(poses) == 1 else concatenate_poses(poses, trim=False)
+
+    # --- Coverage-aware path ---
+    poses = [pose for pose, _ in results]
+    coverages = [float(c) for _, c in results]
+    min_coverage = f"{min(coverages):.3f}"
+
+    return (
+        poses[0] if len(poses) == 1 else concatenate_poses(poses, trim=False),
+        min_coverage,
+    )
 
 
 def _get_models_dir():
@@ -118,18 +147,29 @@ def text_to_gloss_to_pose():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
     args_parser.add_argument("--lexicon", type=str, required=True)
+    args_parser.add_argument("--coverage-info", action="store_true",
+                             help="Enables gloss coverage computation and reporting."
+    )
     args_parser.add_argument("--pose", type=str, required=True)
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
 
-    with open(args.pose, "wb") as f:
-        pose.write(f)
+    result = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language, args.coverage_info)
 
     print("Text to gloss to pose")
     print("Input text:", args.text)
-    print("Output pose:", args.pose)
+    if args.coverage_info:
+        pose, coverage = result
+        output_path = add_coverage_to_pose_path(args.pose, coverage)
+        print(f"Output pose: (coverage: {coverage}): {output_path}")
+    else:
+        pose = result
+        output_path = args.pose
+        print("Output pose:", args.pose)
+    
+    with open(output_path, "wb") as f:
+        pose.write(f)
 
 
 def text_to_gloss_to_pose_to_video():
