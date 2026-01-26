@@ -108,7 +108,7 @@ class PoseLookup:
 
         raise FileNotFoundError
 
-    def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None):
+    def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None, coverage_info: bool = False):
         def lookup_pair(pair):
             word, gloss = pair
             if word == "":
@@ -121,12 +121,18 @@ class PoseLookup:
                 return None
 
         with ThreadPoolExecutor() as executor:
-            results = executor.map(lookup_pair, glosses)
+            results = list(executor.map(lookup_pair, glosses))
 
         poses = [result for result in results if result is not None]  # Filter out None results
 
         if len(poses) == 0:
             gloss_sequence = ' '.join([f"{word}/{gloss}" for word, gloss in glosses])
             raise Exception(f"No poses found for {gloss_sequence}")
+        
+        if coverage_info:
+            total = len(results)
+            success = len(poses)
+            coverage = f"{success / total:.3f}" if total > 0 else "0.000"
+            return poses, coverage
 
         return poses
