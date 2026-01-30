@@ -2,13 +2,13 @@
 
 # Check formatting issues
 check:
-	pylint --rcfile=.pylintrc src
-	yapf -dr src
+	pylint --rcfile=.pylintrc spoken_to_signed
+	yapf -dr spoken_to_signed
 
 # Format source code automatically
 format:
-	isort --profile black src
-	yapf -ir src
+	isort --profile black spoken_to_signed
+	yapf -ir spoken_to_signed
 
 # Run tests for the package
 test:
