@@ -3,3 +3,6 @@ build/
 spoken_to_signed.egg-info/
 .env
 __pycache__/
+*.code-workspace
+dist/
+quick_test.pose
