@@ -2,8 +2,9 @@ import argparse
 import importlib
 import os
 import tempfile
+from pathlib import Path
 from itertools import chain
-from typing import List
+from typing import List, Tuple, Union
 
 from pose_format import Pose
 
@@ -17,13 +18,69 @@ def _text_to_gloss(text: str, language: str, glosser: str, **kwargs) -> List[Glo
     return module.text_to_gloss(text=text, language=language, **kwargs)
 
 
-def _gloss_to_pose(sentences: List[Gloss], lexicon: str, spoken_language: str, signed_language: str) -> Pose:
+def add_coverage_to_pose_path(pose_path: str, coverage: str) -> str:
+    """
+    Given an absolute pose file path and a coverage string (e.g. '0.900'),
+    return a new path where coverage is appended to the filename using
+    dot-free formatting.
+
+    Example:
+        pose_path = "/home/user/whatever.pose"
+        coverage  = "0.900"
+        → "/home/user/whatever_cov0_900.pose"
+    """
+    path = Path(pose_path)
+    coverage_token = coverage.replace(".", "_")
+
+    new_path = path.with_name(
+        f"{path.stem}_cov{coverage_token}{path.suffix}"
+    )
+    return str(new_path)
+
+
+def _gloss_to_pose(
+    sentences: List[Gloss],
+    lexicon: str,
+    spoken_language: str,
+    signed_language: str,
+    coverage_info: bool = False,
+    use_fingerspelling: bool = True,
+) -> Union[Pose, Tuple[Pose, str]]:
     fingerspelling_lookup = FingerspellingPoseLookup()
-    pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
-    poses = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
+    pose_lookup = CSVPoseLookup(
+        lexicon,
+        backup=fingerspelling_lookup if use_fingerspelling else None,
+    )
+
+    results = [
+        gloss_to_pose(
+            gloss,
+            pose_lookup,
+            spoken_language,
+            signed_language,
+            coverage_info=coverage_info
+        )
+        for gloss in sentences
+    ]
+
+    # --- Backward-compatible path (original behavior) ---
+    if not coverage_info:
+        poses = results  # gloss_to_pose returns Pose
+        if len(poses) == 1:
+            return poses[0]
+        return concatenate_poses(poses, trim=False)
+
+    # --- Coverage-aware path ---
+    poses = [pose for pose, _ in results]
+    coverage_list = [coverage for _, coverage in results]
+
     if len(poses) == 1:
-        return poses[0]
-    return concatenate_poses(poses, trim=False)
+        return poses[0], coverage_list[0]
+
+    min_coverage = min(float(c) for c in coverage_list)
+    min_coverage_str = f"{min_coverage:.3f}"
+
+    return concatenate_poses(poses, trim=False), min_coverage_str
 
 
 def _get_models_dir():
@@ -118,18 +175,39 @@ def text_to_gloss_to_pose():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
     args_parser.add_argument("--lexicon", type=str, required=True)
+    args_parser.add_argument("--coverage-info", action="store_true",
+                             help="Enables gloss coverage computation and reporting."
+    )
+    args_parser.add_argument("--no-use-fingerspelling", action="store_true",
+                             help="If True, deactivates the fingerspelling backup")
     args_parser.add_argument("--pose", type=str, required=True)
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    use_fingerspelling = not args.no_use_fingerspelling
 
-    with open(args.pose, "wb") as f:
-        pose.write(f)
+    result = _gloss_to_pose(
+        sentences,
+        args.lexicon,
+        args.spoken_language,
+        args.signed_language,
+        args.coverage_info,
+        use_fingerspelling,
+    )
 
     print("Text to gloss to pose")
     print("Input text:", args.text)
-    print("Output pose:", args.pose)
+    if args.coverage_info:
+        pose, coverage = result
+        output_path = add_coverage_to_pose_path(args.pose, coverage)
+        print(f"Output pose: (coverage: {coverage}): {output_path}")
+    else:
+        pose = result
+        output_path = args.pose
+        print("Output pose:", args.pose)
+    
+    with open(output_path, "wb") as f:
+        pose.write(f)
 
 
 def text_to_gloss_to_pose_to_video():
