@@ -1,7 +1,7 @@
 [project]
 name = "spoken-to-signed"
 description = "Simple pipeline for spoken to signed translation"
-version = "0.0.3"
+version = "0.0.1"
 requires-python = ">=3.9"
 authors = [
     { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" },
@@ -10,6 +10,7 @@ authors = [
 readme = "README.md"
 dependencies = [
     "pose-format>=0.4.1",
+    "pose_anonymization",
     "numpy",
     "scipy",
     "simplemma>=1.0.0",
@@ -30,11 +31,8 @@ nmt = [
 gcs = [
     "gcsfs",
 ]
-anonymization = [
-    "pose_anonymization @ git+https://github.com/sign-language-processing/pose-anonymization",
-]
 all = [
-    "spoken-to-signed[spacy,nmt,gcs,anonymization]",
+    "spoken-to-signed[spacy,nmt,gcs]",
 ]
 
 [tool.ruff]
