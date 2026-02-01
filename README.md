@@ -15,7 +15,7 @@ a `text-to-gloss-to-pose-to-video` pipeline for spoken to signed language transl
 ## Install
 
 ```bash
-pip install git+https://github.com/ZurichNLP/spoken-to-signed-translation.git
+pip install spoken-to-signed
 ```
 
 ## Usage
