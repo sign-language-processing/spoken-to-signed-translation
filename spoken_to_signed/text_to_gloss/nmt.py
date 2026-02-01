@@ -1,68 +1,63 @@
 import os
 import tarfile
-import requests
-import torch as pt
-import sentencepiece as spm
-import sockeye.inference
+from typing import Any
 
+import requests
+import sentencepiece as spm
+import torch as pt
 from sockeye import inference, model
-from typing import Dict, List, Any
 
 from .types import Gloss
 
-
-MODELS_PATH = './models'
+MODELS_PATH = "./models"
 
 
 def download_and_extract_file(url: str, filepath: str):
-
-    print("Attempting to download and extract: %s" % url)
+    print(f"Attempting to download and extract: {url}")
 
     r = requests.get(url)
 
     filepath_tar_ball = filepath + ".tar.gz"
 
-    open(filepath_tar_ball, 'wb').write(r.content)
+    open(filepath_tar_ball, "wb").write(r.content)
 
     tar = tarfile.open(filepath_tar_ball)
     tar.extractall(path=MODELS_PATH)
     tar.close()
 
-    print("Model saved to : %s" % filepath)
+    print(f"Model saved to : {filepath}")
 
 
-def download_model_if_does_not_exist(sockeye_paths: Dict[str, str]):
-
+def download_model_if_does_not_exist(sockeye_paths: dict[str, str]):
     model_path = sockeye_paths["model_path"]
     url = sockeye_paths["url"]
 
     if not os.path.exists(model_path):
         download_and_extract_file(url, model_path)
 
-    assert os.path.exists(model_path), "Model folder '%s' does not exist after " \
-                                       "attempting to download and extract." % model_path
+    assert os.path.exists(model_path), (
+        f"Model folder '{model_path}' does not exist after attempting to download and extract."
+    )
 
 
 def load_sockeye_models():
-
     os.makedirs(MODELS_PATH, exist_ok=True)
 
     spm_name = "sentencepiece.model"
 
     sockeye_paths_dict = {
         "dgs_de": {
-                         "model_path": os.path.join(MODELS_PATH, "dgs_de"),
-                         "spm_path": os.path.join(MODELS_PATH, "dgs_de", spm_name),
-                         "url": "https://archive.cl.uzh.ch/cl-archive/2022/easier/dgs_de.tar.gz"
-                        }
+            "model_path": os.path.join(MODELS_PATH, "dgs_de"),
+            "spm_path": os.path.join(MODELS_PATH, "dgs_de", spm_name),
+            "url": "https://archive.cl.uzh.ch/cl-archive/2022/easier/dgs_de.tar.gz",
+        }
     }
 
     sockeye_models_dict = {}
 
-    device = pt.device('cpu')
+    device = pt.device("cpu")
 
     for model_name in sockeye_paths_dict.keys():
-
         sockeye_paths = sockeye_paths_dict[model_name]
 
         download_model_if_does_not_exist(sockeye_paths)
@@ -71,12 +66,15 @@ def load_sockeye_models():
         spm_path = sockeye_paths["spm_path"]
 
         sockeye_models, sockeye_source_vocabs, sockeye_target_vocabs = model.load_models(
-            device=device, dtype=None, model_folders=[model_path], inference_only=True)
+            device=device, dtype=None, model_folders=[model_path], inference_only=True
+        )
 
-        sockeye_models_dict[model_name] = {"sockeye_models": sockeye_models,
-                                           "spm_model": spm.SentencePieceProcessor(model_file=spm_path),
-                                           "sockeye_source_vocabs": sockeye_source_vocabs,
-                                           "sockeye_target_vocabs": sockeye_target_vocabs}
+        sockeye_models_dict[model_name] = {
+            "sockeye_models": sockeye_models,
+            "spm_model": spm.SentencePieceProcessor(model_file=spm_path),
+            "sockeye_source_vocabs": sockeye_source_vocabs,
+            "sockeye_target_vocabs": sockeye_target_vocabs,
+        }
 
     return device, sockeye_paths_dict, sockeye_models_dict
 
@@ -116,11 +114,9 @@ def add_tag_to_text(text: str, tag: str) -> str:
     return " ".join(tokens)
 
 
-def translate(text: str,
-              source_language_code: str = "de",
-              target_language_code: str = "dgs",
-              nbest_size: int = 3) -> Dict[str, Any]:
-
+def translate(
+    text: str, source_language_code: str = "de", target_language_code: str = "dgs", nbest_size: int = 3
+) -> dict[str, Any]:
     if source_language_code == "de":
         model_name = "dgs_de"
     else:
@@ -134,22 +130,24 @@ def translate(text: str,
 
     pieces = apply_pieces(text, spm_model)
 
-    tag_str = '<2{}>'.format(target_language_code)
+    tag_str = f"<2{target_language_code}>"
     tagged_pieces = add_tag_to_text(pieces, tag_str)
 
     beam_size = nbest_size
 
-    translator = inference.Translator(device=device,
-                                      ensemble_mode='linear',
-                                      scorer=inference.CandidateScorer(),
-                                      output_scores=True,
-                                      batch_size=1,
-                                      beam_size=beam_size,
-                                      beam_search_stop='all',
-                                      nbest_size=nbest_size,
-                                      models=sockeye_models,
-                                      source_vocabs=sockeye_source_vocabs,
-                                      target_vocabs=sockeye_target_vocabs)
+    translator = inference.Translator(
+        device=device,
+        ensemble_mode="linear",
+        scorer=inference.CandidateScorer(),
+        output_scores=True,
+        batch_size=1,
+        beam_size=beam_size,
+        beam_search_stop="all",
+        nbest_size=nbest_size,
+        models=sockeye_models,
+        source_vocabs=sockeye_source_vocabs,
+        target_vocabs=sockeye_target_vocabs,
+    )
 
     input_ = inference.make_input_from_plain_string(0, tagged_pieces)
     output = translator.translate([input_])[0]  # type: sockeye.inference.TranslatorOutput
@@ -158,21 +156,19 @@ def translate(text: str,
     translations = [remove_pieces(t) for t in translations]
 
     return {
-        'source_language_code': source_language_code,
-        'target_language_code': target_language_code,
-        'nbest_size': nbest_size,
-        'text': text,
-        'translations': translations,
+        "source_language_code": source_language_code,
+        "target_language_code": target_language_code,
+        "nbest_size": nbest_size,
+        "text": text,
+        "translations": translations,
     }
 
 
-def text_to_gloss(text: str, language: str, nbest_size: int = 3, **kwargs) -> List[Gloss]:
+def text_to_gloss(text: str, language: str, nbest_size: int = 3, **kwargs) -> list[Gloss]:
     if language == "de":
-
-        translations_dict = translate(text=text,
-                                      source_language_code="de",
-                                      target_language_code="dgs",
-                                      nbest_size=nbest_size)
+        translations_dict = translate(
+            text=text, source_language_code="de", target_language_code="dgs", nbest_size=nbest_size
+        )
     else:
         raise NotImplementedError()
 

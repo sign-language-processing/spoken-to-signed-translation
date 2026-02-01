@@ -1,5 +1,4 @@
 import math
-from typing import List
 
 import numpy as np
 import scipy.signal
@@ -13,10 +12,10 @@ def pose_savgol_filter(pose: Pose):
     # https://stackoverflow.com/questions/75221888/fast-savgol-filter-on-3d-tensor/75406720#75406720
 
     # Smoothing the face does not result in a good result, so we skip it
-    [face_component] = [c for c in pose.header.components if c.name == 'FACE_LANDMARKS']
+    [face_component] = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
     face_range = range(
-        pose.header._get_point_index('FACE_LANDMARKS', face_component.points[0]),
-        pose.header._get_point_index('FACE_LANDMARKS', face_component.points[-1]),
+        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[0]),
+        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[-1]),
     )
 
     _, _, points, dims = pose.body.data.shape
@@ -31,12 +30,14 @@ def create_padding(time: float, example: Pose) -> NumPyPoseBody:
     fps = example.body.fps
     padding_frames = int(time * fps)
     data_shape = example.body.data.shape
-    return NumPyPoseBody(fps=fps,
-                         data=np.zeros(shape=(padding_frames, data_shape[1], data_shape[2], data_shape[3])),
-                         confidence=np.zeros(shape=(padding_frames, data_shape[1], data_shape[2])))
+    return NumPyPoseBody(
+        fps=fps,
+        data=np.zeros(shape=(padding_frames, data_shape[1], data_shape[2], data_shape[3])),
+        confidence=np.zeros(shape=(padding_frames, data_shape[1], data_shape[2])),
+    )
 
 
-def concatenate_poses(poses: List[Pose], padding: NumPyPoseBody, interpolation='linear') -> Pose:
+def concatenate_poses(poses: list[Pose], padding: NumPyPoseBody, interpolation="linear") -> Pose:
     # Add padding to all poses except the last one
     for pose in poses[:-1]:
         pose.body.data = np.concatenate((pose.body.data, padding.data))
@@ -59,19 +60,19 @@ def find_best_connection_point(pose1: Pose, pose2: Pose, window=0.3):
     p1_size = math.ceil(min(window * pose1.body.fps, len(pose1.body.data) * window))
     p2_size = math.ceil(min(window * pose2.body.fps, len(pose2.body.data) * window))
 
-    last_data = pose1.body.data[len(pose1.body.data) - p1_size:]
+    last_data = pose1.body.data[len(pose1.body.data) - p1_size :]
     first_data = pose2.body.data[:p2_size]
 
     last_vectors = last_data.reshape(len(last_data), -1)
     first_vectors = first_data.reshape(len(first_data), -1)
 
-    distances_matrix = cdist(last_vectors, first_vectors, 'euclidean')
+    distances_matrix = cdist(last_vectors, first_vectors, "euclidean")
     min_index = np.unravel_index(np.argmin(distances_matrix, axis=None), distances_matrix.shape)
     last_index = len(pose1.body.data) - p1_size + min_index[0]
     return last_index, min_index[1]
 
 
-def smooth_concatenate_poses(poses: List[Pose], padding=0.20) -> Pose:
+def smooth_concatenate_poses(poses: list[Pose], padding=0.20) -> Pose:
     if len(poses) == 0:
         raise ValueError("No poses to smooth")
 
@@ -80,7 +81,7 @@ def smooth_concatenate_poses(poses: List[Pose], padding=0.20) -> Pose:
 
     start = 0
     for i, pose in enumerate(poses):
-        print('Processing', i + 1, 'of', len(poses), '...')
+        print("Processing", i + 1, "of", len(poses), "...")
         if i != len(poses) - 1:
             end, next_start = find_best_connection_point(poses[i], poses[i + 1])
         else:
@@ -91,7 +92,7 @@ def smooth_concatenate_poses(poses: List[Pose], padding=0.20) -> Pose:
         start = next_start
 
     padding_pose = create_padding(padding, poses[0])
-    print('Concatenating...')
+    print("Concatenating...")
     single_pose = concatenate_poses(poses, padding_pose)
-    print('Smoothing...')
+    print("Smoothing...")
     return pose_savgol_filter(single_pose)

@@ -1,6 +1,6 @@
 LANGUAGE_BACKUP = {
-    'slf': 'ise',  # Swiss-Italian to Italian
-    'ssr': 'fsl'  # Swiss-French to French
+    "slf": "ise",  # Swiss-Italian to Italian
+    "ssr": "fsl",  # Swiss-French to French
 }
 
 

@@ -1,10 +1,9 @@
 import functools
+from typing import Optional
 
-from typing import Optional, Tuple
 
-
-@functools.lru_cache(maxsize=None)
-def load_spacy_model(model_names: Tuple[str, ...], disable: Optional[Tuple[str, ...]] = None):
+@functools.cache
+def load_spacy_model(model_names: tuple[str, ...], disable: Optional[tuple[str, ...]] = None):
     try:
         import spacy
     except ImportError as e:
@@ -23,5 +22,6 @@ def load_spacy_model(model_names: Tuple[str, ...], disable: Optional[Tuple[str, 
     last_model = model_names[-1]
     print(f"{last_model} not found. Downloading...")
     import spacy.cli
+
     spacy.cli.download(last_model)
     return spacy.load(last_model, disable=disable)

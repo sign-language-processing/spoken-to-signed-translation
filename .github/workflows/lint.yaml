@@ -1,0 +1,33 @@
+name: Lint
+
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          activate-environment: true
+
+      - name: Install dependencies
+        run: uv pip install ".[dev]"
+
+      - name: Lint code
+        run: uv run ruff check spoken_to_signed
+
+      - name: Check formatting
+        run: uv run ruff format --check spoken_to_signed

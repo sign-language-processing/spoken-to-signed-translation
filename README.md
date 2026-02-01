@@ -58,16 +58,6 @@ text_to_gloss \
   --signed-language <sgg|ssr|slf>
 ```
 
-#### Pose-to-Video Conversion
-
-This script converts a pose file into a video file.
-
-```bash
-pose_to_video \
-  --pose <pose_file_path>.pose \
-  --video <output_video_file_path>.mp4
-```
-
 #### Text-to-Gloss-to-Pose Translation
 
 This script translates input text into gloss notation, then converts the glosses into a pose file.
@@ -85,6 +75,11 @@ text_to_gloss_to_pose \
 #### Text-to-Gloss-to-Pose-to-Video Translation
 
 This script translates input text into gloss notation, converts the glosses into a pose file, and then transforms the pose file into a video.
+
+> **Note:** Video generation requires the `pose-to-video` package with pix2pix and upscaler:
+> ```bash
+> pip install 'pose-to-video[pix2pix,simple_upscaler] @ git+https://github.com/sign-language-processing/pose-to-video'
+> ```
 
 ```bash
 text_to_gloss_to_pose_to_video \
