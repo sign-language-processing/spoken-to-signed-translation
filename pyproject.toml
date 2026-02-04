@@ -1,7 +1,8 @@
 [project]
 name = "spoken-to-signed"
 description = "Simple pipeline for spoken to signed translation"
-version = "0.0.3"
+version = "0.0.1"
+requires-python = ">=3.9"
 authors = [
     { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" },
     { name = "Mathias Müller", email = "mmueller@cl.uzh.ch" }
@@ -9,36 +10,52 @@ authors = [
 readme = "README.md"
 dependencies = [
     "pose-format>=0.4.1",
+    "pose_anonymization",
     "numpy",
-    "scipy", # Used for savgol filter
-    "simplemma>=1.0.0", # Used for "simple" text_to_gloss
-    # Optional modules, used in different parts of the pipeline:
-    # "pose_anonymization @ git+https://github.com/sign-language-processing/pose-anonymization", # Used for anonymization
-    # "spacy", # used for "rules" and "spacylemma" text_to_gloss components
-    # "sentencepiece", # used for "nmt" text_to_gloss component
-    # "sockeye==3.1.10", # used for "nmt" text_to_gloss component
-    # "gcsfs", # When files are stored on Google Cloud Storage
+    "scipy",
+    "simplemma>=1.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "pylint"
+    "ruff",
+]
+spacy = [
+    "spacy",
+]
+nmt = [
+    "sentencepiece",
+    "sockeye==3.1.10",
+]
+gcs = [
+    "gcsfs",
+]
+all = [
+    "spoken-to-signed[spacy,nmt,gcs]",
 ]
 
-[tool.yapf]
-based_on_style = "google"
-column_limit = 120
+[tool.ruff]
+line-length = 120
 
-[tool.pylint]
-max-line-length = 120
-disable = [
-    "C0114", # Missing module docstring
-    "C0115", # Missing class docstring
-    "C0116", # Missing function or method docstring
-    "C0415", # Import outside toplevel
-    "R0917", # Too many positional arguments
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "C90",  # mccabe complexity
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "PT",   # flake8-pytest-style
+    "W605", # invalid escape sequence
+    "BLE",  # flake8-blind-except
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"spoken_to_signed/text_to_gloss/gpt.py" = ["E501"]  # Long lines in prompt strings
+"spoken_to_signed/text_to_gloss/rules.py" = ["E501", "C901"]  # Long comments, complex function
 
 [tool.setuptools]
 packages = [
@@ -57,15 +74,11 @@ spoken_to_signed = [
     "assets/*",
 ]
 
-
 [tool.pytest.ini_options]
 addopts = "-v"
-testpaths = [
-    "spoken_to_signed",
-]
+testpaths = ["spoken_to_signed", "tests"]
 
 [project.scripts]
 text_to_gloss = "spoken_to_signed.bin:text_to_gloss"
-#pose_to_video = "spoken_to_signed.bin:pose_to_video"
 text_to_gloss_to_pose = "spoken_to_signed.bin:text_to_gloss_to_pose"
 text_to_gloss_to_pose_to_video = "spoken_to_signed.bin:text_to_gloss_to_pose_to_video"

@@ -1,0 +1,30 @@
+name: Test
+
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.9"
+          enable-cache: true
+          activate-environment: true
+
+      - name: Install dependencies
+        run: uv pip install ".[dev]"
+
+      - name: Test Code
+        run: uv run pytest

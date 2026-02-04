@@ -1,8 +1,5 @@
-from typing import List
-
-from .types import Gloss
 from .common import load_spacy_model
-
+from .types import Gloss
 
 LANGUAGE_MODELS_SPACY = {
     "de": "de_core_news_lg",
@@ -12,9 +9,9 @@ LANGUAGE_MODELS_SPACY = {
 }
 
 
-def text_to_gloss(text: str, language: str, ignore_punctuation: bool = False, **unused_kwargs) -> List[Gloss]:
+def text_to_gloss(text: str, language: str, ignore_punctuation: bool = False, **unused_kwargs) -> list[Gloss]:
     if language not in LANGUAGE_MODELS_SPACY:
-        raise NotImplementedError("Don't know language '%s'." % language)
+        raise NotImplementedError(f"Don't know language '{language}'.")
 
     model_name = LANGUAGE_MODELS_SPACY[language]
 

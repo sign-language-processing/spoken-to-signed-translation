@@ -1,14 +1,14 @@
 .PHONY: check format test
 
-# Check formatting issues
+# Check linting and formatting issues
 check:
-	pylint --rcfile=.pylintrc src
-	yapf -dr src
+	ruff check spoken_to_signed
+	ruff format --check spoken_to_signed
 
 # Format source code automatically
 format:
-	isort --profile black src
-	yapf -ir src
+	ruff check --fix spoken_to_signed
+	ruff format spoken_to_signed
 
 # Run tests for the package
 test:

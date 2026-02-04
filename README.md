@@ -15,23 +15,27 @@ a `text-to-gloss-to-pose-to-video` pipeline for spoken to signed language transl
 ## Install
 
 ```bash
-pip install git+https://github.com/ZurichNLP/spoken-to-signed-translation.git
+pip install spoken-to-signed
 ```
 
 ## Usage
 
 For language codes, we use the [IANA Language Subtag Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry).
-Our pipeline provides multiple scripts. 
+Our pipeline provides multiple scripts.
 
-To quickly demo it using a dummy lexicon, run:
+To quickly demo it using a dummy lexicon, either open it in Colab:
 
 <a target="_blank" href="https://colab.research.google.com/drive/1UtBmfBIhUa2EdLMnWJr0hxAOZelQ50_9?usp=sharing">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
+or run it locally with some installation steps first:
+
 ```bash
 git clone https://github.com/ZurichNLP/spoken-to-signed-translation
 cd spoken-to-signed-translation
+
+pip install .
 
 text_to_gloss_to_pose \
   --text "Kleine Kinder essen Pizza in Zürich." \
@@ -42,11 +46,9 @@ text_to_gloss_to_pose \
   --pose "quick_test.pose"
 ```
 
-
-
 #### Text-to-Gloss Translation
 
-This script translates input text into gloss notation. 
+This script translates input text into gloss notation.
 
 ```bash
 text_to_gloss \
@@ -54,16 +56,6 @@ text_to_gloss \
   --glosser <simple|spacylemma|rules|nmt> \
   --spoken-language <de|fr|it> \
   --signed-language <sgg|ssr|slf>
-```
-
-#### Pose-to-Video Conversion
-
-This script converts a pose file into a video file.
-
-```bash
-pose_to_video \
-  --pose <pose_file_path>.pose \
-  --video <output_video_file_path>.mp4
 ```
 
 #### Text-to-Gloss-to-Pose Translation
@@ -87,6 +79,11 @@ text_to_gloss_to_pose \
 
 This script translates input text into gloss notation, converts the glosses into a pose file, and then transforms the pose file into a video.
 
+> **Note:** Video generation requires the `pose-to-video` package with pix2pix and upscaler:
+> ```bash
+> pip install 'pose-to-video[pix2pix,simple_upscaler] @ git+https://github.com/sign-language-processing/pose-to-video'
+> ```
+
 ```bash
 text_to_gloss_to_pose_to_video \
   --text <input_text> \
@@ -103,23 +100,25 @@ text_to_gloss_to_pose_to_video \
 
 The pipeline consists of three main components:
 
-1. **Text-to-Gloss Translation:**
+1. **Text-to-Gloss Translation**
+
    Transforms the input (spoken language) text into a sequence of glosses.
 
-- [Simple lemmatizer](src/text_to_gloss/simple.py),
-- [Spacy lemmatizer: more accurate, but slower lemmatization, covering fewer languages than `simple`](src/text_to_gloss/spacylemma.py),
-- [Rule-based word reordering and dropping](src/text_to_gloss/rules.py) component
-- [Neural machine translation system](src/text_to_gloss/nmt.py).
+  - [Simple lemmatizer](spoken_to_signed/text_to_gloss/simple.py),
+  - [Spacy lemmatizer: more accurate, but slower lemmatization, covering fewer languages than `simple`](spoken_to_signed/text_to_gloss/spacylemma.py),
+  - [Rule-based word reordering and dropping](spoken_to_signed/text_to_gloss/rules.py) component and
+  - [Neural machine translation system](spoken_to_signed/text_to_gloss/nmt.py).
 
-2. **Gloss-to-Pose Conversion:**
+2. **Gloss-to-Pose Conversion**
 
-- [Lookup](src/gloss_to_pose/lookup.py): Uses a lexicon of signed languages to convert the sequence of glosses into a
-  sequence of poses.
-- [Pose Concatenation](src/gloss_to_pose/concatenate.py): The poses are then cropped, concatenated, and smoothed,
-  creating a pose representation for the input sentence.
+  - [Lookup](spoken_to_signed/gloss_to_pose/lookup/lookup.py): Uses a lexicon of signed languages to convert the sequence of glosses into a
+      sequence of poses.
+  - [Pose Concatenation](spoken_to_signed/gloss_to_pose/concatenate.py): The poses are then cropped, concatenated, and smoothed,
+      creating a pose representation for the input sentence.
 
-3. **Pose-to-Video Generation:** Transforms the processed pose video back into a synthesized video using an image
-   translation model.
+3. **Pose-to-Video Generation**
+
+    Transforms the processed pose video back into a synthesized video using an image translation model.
 
 ## Supported Languages
 
@@ -131,6 +130,12 @@ The pipeline consists of three main components:
 | German Sign Language        | gsg       | `simple`, `spacylemma`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)          |
 | British Sign Language       | bfi       | `simple`, `spacylemma`, [`nmt`](TODO-model-link)                                                                                                           |
 
+## Online Playgrounds
+
+We have two available:
+
+- [sign.mt](https://sign.mt) is a web interface of a translation system.
+- [research.sign.mt](https://research.sign.mt) is an overview of sign language processing literature.
 
 ## Citation
 

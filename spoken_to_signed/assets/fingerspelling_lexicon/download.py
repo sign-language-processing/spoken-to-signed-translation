@@ -7,7 +7,7 @@ from google.cloud import storage
 client = storage.Client()
 
 # Define bucket name
-bucket_name = 'sign-mt-poses'
+bucket_name = "sign-mt-poses"
 bucket = client.bucket(bucket_name)
 
 
@@ -19,19 +19,19 @@ def download_file_from_gcs(bucket, source_filename, destination_path):
 
 
 # Open the CSV file and process each row
-csv_file_path = Path('data.csv')
+csv_file_path = Path("data.csv")
 
-with csv_file_path.open('r') as csvfile:
+with csv_file_path.open("r") as csvfile:
     reader = csv.DictReader(csvfile)
 
     for row in reader:
         # Extract the path and filename
-        full_path = Path(row['path'])
+        full_path = Path(row["path"])
         if full_path.exists():
             continue
 
         filename = full_path.name
-        Path(row['signed_language']).mkdir(exist_ok=True)
+        Path(row["signed_language"]).mkdir(exist_ok=True)
 
         # Download the file from GCS to the specified path
         download_file_from_gcs(bucket, filename, str(full_path))
