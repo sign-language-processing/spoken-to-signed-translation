@@ -120,12 +120,12 @@ def text_to_gloss_to_pose():
     args_parser.add_argument("--lexicon", type=str, required=True)
     args_parser.add_argument("--pose", type=str, required=True)
     args_parser.add_argument(
-        "--no-use-fingerspelling",
+        "--no-fingerspelling",
         action="store_true",
         help="Disable fingerspelling fallback during pose lookup",
     )
     args = args_parser.parse_args()
-    use_fingerspelling = not args.no_use_fingerspelling
+    use_fingerspelling = not args.no_fingerspelling
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
     pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language, use_fingerspelling)
@@ -144,12 +144,12 @@ def text_to_gloss_to_pose_to_video():
     args_parser.add_argument("--lexicon", type=str, required=True)
     args_parser.add_argument("--video", type=str, required=True)
     args_parser.add_argument(
-        "--no-use-fingerspelling",
+        "--no-fingerspelling",
         action="store_true",
         help="Disable fingerspelling fallback during pose lookup",
     )
     args = args_parser.parse_args()
-    use_fingerspelling = not args.no_use_fingerspelling
+    use_fingerspelling = not args.no_fingerspelling
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
     pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language, use_fingerspelling)
