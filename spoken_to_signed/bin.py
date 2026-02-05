@@ -22,8 +22,8 @@ def _text_to_gloss(text: str, language: str, glosser: str, **kwargs) -> list[Glo
     return module.text_to_gloss(text=text, language=language, **kwargs)
 
 
-def _gloss_to_pose(sentences: list[Gloss], lexicon: str, spoken_language: str, signed_language: str) -> Pose:
-    fingerspelling_lookup = FingerspellingPoseLookup()
+def _gloss_to_pose(sentences: list[Gloss], lexicon: str, spoken_language: str, signed_language: str, use_fingerspelling: bool = True) -> Pose:
+    fingerspelling_lookup = FingerspellingPoseLookup() if use_fingerspelling else None
     pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
     poses = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
     if len(poses) == 1:
@@ -133,10 +133,16 @@ def text_to_gloss_to_pose():
     _text_input_arguments(args_parser)
     args_parser.add_argument("--lexicon", type=str, required=True)
     args_parser.add_argument("--pose", type=str, required=True)
+    args_parser.add_argument(
+        "--no-fingerspelling",
+        action="store_true",
+        help="Disable fingerspelling fallback during pose lookup",
+    )
     args = args_parser.parse_args()
+    use_fingerspelling = not args.no_fingerspelling
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language, use_fingerspelling)
 
     with open(args.pose, "wb") as f:
         pose.write(f)
@@ -151,10 +157,16 @@ def text_to_gloss_to_pose_to_video():
     _text_input_arguments(args_parser)
     args_parser.add_argument("--lexicon", type=str, required=True)
     args_parser.add_argument("--video", type=str, required=True)
+    args_parser.add_argument(
+        "--no-fingerspelling",
+        action="store_true",
+        help="Disable fingerspelling fallback during pose lookup",
+    )
     args = args_parser.parse_args()
+    use_fingerspelling = not args.no_fingerspelling
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language, use_fingerspelling)
     _pose_to_video(pose, args.video)
 
     print("Text to gloss to pose to video")
