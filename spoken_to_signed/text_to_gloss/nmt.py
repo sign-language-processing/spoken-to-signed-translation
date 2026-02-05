@@ -49,7 +49,7 @@ def load_sockeye_models():
         "dgs_de": {
             "model_path": os.path.join(MODELS_PATH, "dgs_de"),
             "spm_path": os.path.join(MODELS_PATH, "dgs_de", spm_name),
-            "url": "https://archive.cl.uzh.ch/cl-archive/2022/easier/dgs_de.tar.gz",
+            "url": "https://archive.cl.uzh.ch/public/archive/2022/easier/dgs_de.tar.gz",
         }
     }
 
