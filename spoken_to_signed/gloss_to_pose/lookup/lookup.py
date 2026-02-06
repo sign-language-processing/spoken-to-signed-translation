@@ -9,6 +9,10 @@ from spoken_to_signed.gloss_to_pose.languages import LANGUAGE_BACKUP
 from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
 
+from spoken_to_signed.gloss_to_pose.lookup.gloss_normalization_helpers import (
+    get_progressive_gloss_normalizers,
+    should_normalize_integer_token
+)
 
 class PoseLookup:
     def __init__(self, rows: list, directory: str = None, backup: "PoseLookup" = None, cache: LRUCache = None):
@@ -83,19 +87,40 @@ class PoseLookup:
         return rows[0]
 
     def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
-        lookup_list = [
-            (self.words_index, (spoken_language, signed_language, word)),
-            (self.glosses_index, (spoken_language, signed_language, word)),
-            (self.glosses_index, (spoken_language, signed_language, gloss)),
-        ]
+        
+        # List of progressive transformations applied ONLY in the main language
+        preprocess_steps = get_progressive_gloss_normalizers()
 
-        for dict_index, (spoken_language, signed_language, term) in lookup_list:
-            if spoken_language in dict_index:
-                if signed_language in dict_index[spoken_language]:
-                    lower_term = term.lower()
-                    if lower_term in dict_index[spoken_language][signed_language]:
-                        rows = dict_index[spoken_language][signed_language][lower_term]
-                        return self.get_pose(self.get_best_row(rows, term))
+        current_gloss = gloss
+
+        # Attempts within the main language
+        for step_idx, step_fn in enumerate(preprocess_steps):
+            # Apply cumulative transformations except for attempt #0
+            if step_fn is not None:
+                current_gloss = step_fn(current_gloss)
+
+            lookup_list = [
+                (self.words_index, (spoken_language, signed_language, word)),
+                (self.glosses_index, (spoken_language, signed_language, word)),
+                (self.glosses_index, (spoken_language, signed_language, current_gloss)),
+            ]
+
+            for dict_index, (spoken_language, signed_language, term) in lookup_list:
+                if spoken_language in dict_index:
+                    if signed_language in dict_index[spoken_language]:
+                        lower_term = term.lower()
+                        if lower_term in dict_index[spoken_language][signed_language]:
+                            rows = dict_index[spoken_language][signed_language][lower_term]
+                            return self.get_pose(self.get_best_row(rows, term))
+
+            if step_idx + 1 < len(preprocess_steps):
+                next_step_fn = preprocess_steps[step_idx + 1]
+
+        # For the backups: Normalize the word only if the gloss represents a standalone integer.
+        # This avoids altering decimals or alphanumeric tokens (e.g. "3.14", "A3").
+        # Examples: "3," → "3", "(42)" → "42"; NOT normalized: "3.14", "A3", "3rd"
+        if should_normalize_integer_token(gloss):
+            word = preprocess_steps[-2](word)
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:
