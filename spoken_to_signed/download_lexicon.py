@@ -2,9 +2,8 @@ import argparse
 import csv
 import os
 from datetime import datetime
-from typing import List, Dict
 
-from pose_format import PoseHeader, Pose
+from pose_format import Pose, PoseHeader
 from pose_format.numpy import NumPyPoseBody
 from pose_format.utils.reader import BufferReader
 from tqdm import tqdm
@@ -20,20 +19,21 @@ def init_index(index_path: str):
             writer.writerow(LEXICON_INDEX)
 
 
-def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
+def load_signsuisse(directory_path: str) -> list[dict[str, str]]:
     try:
         import sign_language_datasets
     except ImportError as e:
         raise ImportError("Please install sign_language_datasets. pip install sign-language-datasets") from e
 
-    import tensorflow_datasets as tfds
     # noinspection PyUnresolvedReferences
     import sign_language_datasets.datasets.signsuisse as signsuisse
-    # noinspection PyUnresolvedReferences
-    from sign_language_datasets.datasets.signsuisse.signsuisse import _POSE_HEADERS
+    import tensorflow_datasets as tfds
     from sign_language_datasets.datasets.config import SignDatasetConfig
 
-    IANA_TAGS = {
+    # noinspection PyUnresolvedReferences
+    from sign_language_datasets.datasets.signsuisse.signsuisse import _POSE_HEADERS
+
+    iana_tags = {
         "ch-de": "sgg",
         "ch-fr": "ssr",
         "ch-it": "slf",
@@ -50,7 +50,7 @@ def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
     for datum in tqdm(dataset["train"]):
         uid_raw = datum['id'].numpy().decode('utf-8')
         spoken_language = datum['spokenLanguage'].numpy().decode('utf-8')
-        signed_language = IANA_TAGS[datum['signedLanguage'].numpy().decode('utf-8')]
+        signed_language = iana_tags[datum['signedLanguage'].numpy().decode('utf-8')]
         words = datum['name'].numpy().decode('utf-8')
 
         # Load pose and save to file
@@ -77,7 +77,7 @@ def load_signsuisse(directory_path: str) -> List[Dict[str, str]]:
         }
 
 
-def normalize_row(row: Dict[str, str]):
+def normalize_row(row: dict[str, str]):
     if row['glosses'] == "" and row['words'] != "":
         from spoken_to_signed.text_to_gloss.simple import text_to_gloss
         try:
@@ -99,7 +99,7 @@ def get_data(name: str, directory: str):
     return data_loaders[name](directory)
 
 
-def add_data(data: List[Dict[str, str]], directory: str):
+def add_data(data: list[dict[str, str]], directory: str):
     index_path = os.path.join(directory, 'index.csv')
     os.makedirs(directory, exist_ok=True)
     init_index(index_path)

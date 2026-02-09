@@ -57,6 +57,7 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"spoken_to_signed/download_lexicon.py" = ["F401"]  # TFDS datasets should be imported
 "spoken_to_signed/text_to_gloss/gpt.py" = ["E501"]  # Long lines in prompt strings
 "spoken_to_signed/text_to_gloss/rules.py" = ["E501", "C901"]  # Long comments, complex function
 
