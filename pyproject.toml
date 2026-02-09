@@ -1,7 +1,7 @@
 [project]
 name = "spoken-to-signed"
 description = "Simple pipeline for spoken to signed translation"
-version = "0.0.1"
+version = "0.0.2"
 requires-python = ">=3.9"
 authors = [
     { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" },
@@ -21,6 +21,9 @@ dev = [
     "pytest",
     "ruff",
 ]
+lexicon = [
+    "sign-language-datasets",
+]
 spacy = [
     "spacy",
 ]
@@ -32,7 +35,7 @@ gcs = [
     "gcsfs",
 ]
 all = [
-    "spoken-to-signed[spacy,nmt,gcs]",
+    "spoken-to-signed[spacy,nmt,gcs,lexicon]",
 ]
 
 [tool.ruff]
@@ -79,6 +82,7 @@ addopts = "-v"
 testpaths = ["spoken_to_signed", "tests"]
 
 [project.scripts]
+download_lexicon = "spoken_to_signed.download_lexicon:main"
 text_to_gloss = "spoken_to_signed.bin:text_to_gloss"
 text_to_gloss_to_pose = "spoken_to_signed.bin:text_to_gloss_to_pose"
 text_to_gloss_to_pose_to_video = "spoken_to_signed.bin:text_to_gloss_to_pose_to_video"
