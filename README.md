@@ -18,6 +18,13 @@ a `text-to-gloss-to-pose-to-video` pipeline for spoken to signed language transl
 pip install spoken-to-signed
 ```
 
+Then, to download a lexicon, run:
+```bash
+download_lexicon \
+  --name <signsuisse> \
+  --directory <path_to_directory>
+```
+
 ## Usage
 
 For language codes, we use the [IANA Language Subtag Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry).
@@ -117,13 +124,13 @@ The pipeline consists of three main components:
 
 ## Supported Languages
 
-| Language                    | IANA Code | Glossers Supported                                                                                                                                         |
-|-----------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Swiss German Sign Language  | sgg       | `simple`, `spacylemma`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) |
-| Swiss French Sign Language  | ssr       | `simple`, `spacylemma`                                                                                                                                     |
-| Swiss Italian Sign Language | slf       | `simple`, `spacylemma`                                                                                                                                     |
-| German Sign Language        | gsg       | `simple`, `spacylemma`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)          |
-| British Sign Language       | bfi       | `simple`, `spacylemma`, [`nmt`](TODO-model-link)                                                                                                           |
+| Language                    | IANA Code | Glossers Supported                                                                                                                                         | Lexicon Data Source                                  |
+|-----------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| Swiss German Sign Language  | sgg       | `simple`, `spacylemma`, `rules`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component) | [SignSuisse (de)](https://signsuisse.sgb-fss.ch/de/) |
+| Swiss French Sign Language  | ssr       | `simple`, `spacylemma`                                                                                                                                                   | [SignSuisse (fr)](https://signsuisse.sgb-fss.ch/fr/) |
+| Swiss Italian Sign Language | slf       | `simple`, `spacylemma`                                                                                                                                                   | [SignSuisse (it)](https://signsuisse.sgb-fss.ch/it/) |
+| German Sign Language        | gsg       | `simple`, `spacylemma`, [`nmt`](https://github.com/ZurichNLP/spoken-to-signed-translation/tree/main/spoken_to_signed/text_to_gloss#nmt-component)                        | WordNet (Coming Soon)                                |
+| British Sign Language       | bfi       | `simple`, `spacylemma`, [`nmt`](TODO-model-link)                                                                                                                         | WordNet (Coming Soon)                                |
 
 ## Online Playgrounds
 
