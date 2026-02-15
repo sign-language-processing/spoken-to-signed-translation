@@ -79,6 +79,9 @@ text_to_gloss_to_pose \
   --pose <output_pose_file_path>.pose
 ```
 
+> **Note:** By default, the system uses **fingerspelling as a fallback mechanism** when a gloss is not found in the lexicon.
+> To disable this behavior and restrict the lookup to lexicon entries only, use the `--no-fingerspelling` flag.
+
 #### Text-to-Gloss-to-Pose-to-Video Translation
 
 This script translates input text into gloss notation, converts the glosses into a pose file, and then transforms the pose file into a video.
@@ -97,6 +100,8 @@ text_to_gloss_to_pose_to_video \
   --signed-language <sgg|ssr|slf> \
   --video <output_video_file_path>.mp4
 ```
+
+> **Note:** As in the `text_to_gloss_to_pose` command, fingerspelling is enabled by default and can be disabled using the `--no-fingerspelling` flag.
 
 ## Methodology
 
