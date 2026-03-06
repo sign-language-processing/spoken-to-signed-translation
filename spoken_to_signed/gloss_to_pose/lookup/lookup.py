@@ -2,6 +2,7 @@ import math
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 from pose_format import Pose
 
@@ -82,7 +83,9 @@ class PoseLookup:
         # Return the highest priority row
         return rows[0]
 
-    def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
+    def lookup(
+        self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None
+    ) -> tuple[Pose, str, Optional[list[str]]]:
         lookup_list = [
             (self.words_index, (spoken_language, signed_language, word)),
             (self.glosses_index, (spoken_language, signed_language, word)),
@@ -95,11 +98,17 @@ class PoseLookup:
                     lower_term = term.lower()
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
-                        return self.get_pose(self.get_best_row(rows, term))
+                        return self.get_pose(self.get_best_row(rows, term)), "lexicon", None
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:
-            return self.lookup(word, gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source)
+            pose, coverage_type, sub_elements = self.lookup(
+                word, gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source
+            )
+            # If found in the backup language's own lexicon, label as language_backup; otherwise keep the type
+            if coverage_type == "lexicon":
+                return pose, "language_backup", None
+            return pose, coverage_type, sub_elements
 
         # Backup strategy: revert to fingerspelling
         if self.backup is not None:
@@ -107,25 +116,49 @@ class PoseLookup:
 
         raise FileNotFoundError
 
-    def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None):
+    def lookup_sequence(
+        self,
+        glosses: Gloss,
+        spoken_language: str,
+        signed_language: str,
+        source: str = None,
+        coverage_info: bool = False,
+    ):
         def lookup_pair(pair):
             word, gloss = pair
             if word == "":
-                return None
+                return None, None, None, word, gloss
 
             try:
-                return self.lookup(word, gloss, spoken_language, signed_language)
+                pose, coverage_type, sub_elements = self.lookup(word, gloss, spoken_language, signed_language)
+                return pose, coverage_type, sub_elements, word, gloss
             except FileNotFoundError as e:
                 print(e)
-                return None
+                return None, None, None, word, gloss
 
         with ThreadPoolExecutor() as executor:
-            results = executor.map(lookup_pair, glosses)
+            results = list(executor.map(lookup_pair, glosses))
 
-        poses = [result for result in results if result is not None]  # Filter out None results
+        poses = [pose for pose, _, _, _, _ in results if pose is not None]
 
         if len(poses) == 0:
             gloss_sequence = " ".join([f"{word}/{gloss}" for word, gloss in glosses])
             raise Exception(f"No poses found for {gloss_sequence}")
+
+        if coverage_info:
+            from spoken_to_signed.gloss_to_pose.coverage import TokenCoverage
+
+            token_coverages = [
+                TokenCoverage(
+                    word=word,
+                    gloss=gloss,
+                    matched=(coverage_type == "lexicon"),
+                    coverage_type=coverage_type,
+                    fingerspelled_keys=sub_elements,
+                )
+                for pose, coverage_type, sub_elements, word, gloss in results
+                if word != ""  # exclude empty/skipped tokens
+            ]
+            return poses, token_coverages
 
         return poses

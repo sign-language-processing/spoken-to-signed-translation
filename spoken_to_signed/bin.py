@@ -11,6 +11,7 @@ from spoken_to_signed.gloss_to_pose import (
     concatenate_poses,
     gloss_to_pose,
 )
+from spoken_to_signed.gloss_to_pose.coverage import CoverageStats, TokenCoverage
 from spoken_to_signed.gloss_to_pose.lookup.fingerspelling_lookup import (
     FingerspellingPoseLookup,
 )
@@ -22,13 +23,30 @@ def _text_to_gloss(text: str, language: str, glosser: str, **kwargs) -> list[Glo
     return module.text_to_gloss(text=text, language=language, **kwargs)
 
 
-def _gloss_to_pose(sentences: list[Gloss], lexicon: str, spoken_language: str, signed_language: str) -> Pose:
+def _gloss_to_pose(
+    sentences: list[Gloss],
+    lexicon: str,
+    spoken_language: str,
+    signed_language: str,
+    coverage_info: bool = False,
+) -> "Pose | tuple[Pose, list[list[TokenCoverage]]]":
     fingerspelling_lookup = FingerspellingPoseLookup()
     pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
-    poses = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
-    if len(poses) == 1:
-        return poses[0]
-    return concatenate_poses(poses, trim=False)
+    results = [
+        gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language, coverage_info=coverage_info)
+        for gloss in sentences
+    ]
+
+    if not coverage_info:
+        poses = results
+        return poses[0] if len(poses) == 1 else concatenate_poses(poses, trim=False)
+
+    poses = [pose for pose, _ in results]
+    all_token_coverages = [coverages for _, coverages in results]
+    return (
+        poses[0] if len(poses) == 1 else concatenate_poses(poses, trim=False),
+        all_token_coverages,
+    )
 
 
 def _get_models_dir():
@@ -128,22 +146,57 @@ def pose_to_video():
     print("Output video:", args.video)
 
 
+def _print_token_coverage(all_token_coverages: list[list[TokenCoverage]]):
+    total = sum(len(s) for s in all_token_coverages)
+    matched = sum(tc.matched for s in all_token_coverages for tc in s)
+    for sentence_coverages in all_token_coverages:
+        for tc in sentence_coverages:
+            status = "✓" if tc.matched else "✗"
+            print(f"  {status}  {tc.word} -> {tc.gloss}")
+    print(f"Coverage: {matched / total:.3f} ({matched}/{total} tokens matched)")
+
+
 def text_to_gloss_to_pose():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
     args_parser.add_argument("--lexicon", type=str, required=True)
+    args_parser.add_argument(
+        "--coverage-info",
+        action="store_true",
+        help="Print per-token gloss coverage to stdout.",
+    )
+    args_parser.add_argument(
+        "--coverage-stats",
+        type=str,
+        default=None,
+        help="Path to save per-token coverage statistics as a JSON file.",
+    )
     args_parser.add_argument("--pose", type=str, required=True)
     args = args_parser.parse_args()
 
-    sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    need_coverage = args.coverage_info or args.coverage_stats is not None
 
-    with open(args.pose, "wb") as f:
-        pose.write(f)
+    sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
+    result = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language, need_coverage)
 
     print("Text to gloss to pose")
     print("Input text:", args.text)
     print("Output pose:", args.pose)
+
+    if need_coverage:
+        pose, all_token_coverages = result
+        _print_token_coverage(all_token_coverages)
+        if args.coverage_stats:
+            stats = CoverageStats()
+            for sentence_coverages in all_token_coverages:
+                stats.add_sentence(sentence_coverages, text=args.text)
+            stats.save(args.coverage_stats)
+            print(f"Coverage stats saved to: {args.coverage_stats}")
+    else:
+        pose = result
+
+    with open(args.pose, "wb") as f:
+        pose.write(f)
 
 
 def text_to_gloss_to_pose_to_video():
