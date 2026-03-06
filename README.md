@@ -95,6 +95,38 @@ Color legend:
 - Orange: matched via fingerspelling
 - Red: not matched
 
+#### Bulk Text-to-Gloss-to-Pose Translation
+
+This script translates a file of sentences (one per line) into pose files in bulk.
+
+```bash
+text_to_gloss_to_pose_bulk \
+  --texts <input_text_file> \
+  --glosser <simple|spacylemma|rules|nmt> \
+  --lexicon <path_to_directory> \
+  --spoken-language <de|fr|it> \
+  --signed-language <sgg|ssr|slf> \
+  --output-dir <output_directory>
+```
+
+By default, one `.pose` file per sentence is written to `--output-dir` (named `000000.pose`, `000001.pose`, …).
+
+Use `--compacted-poses` to concatenate all poses into chunked files instead, together with a `metadata.tsv` mapping each sentence to its file and frame range:
+
+```bash
+text_to_gloss_to_pose_bulk \
+  --texts sentences.txt \
+  --glosser simple \
+  --lexicon assets/dummy_lexicon \
+  --spoken-language de \
+  --signed-language sgg \
+  --output-dir output/ \
+  --compacted-poses \
+  --max-frames-per-chunk 10000
+```
+
+Add `--coverage-stats <file.json>` to save aggregated per-token coverage statistics across all sentences.
+
 #### Text-to-Gloss-to-Pose-to-Video Translation
 
 This script translates input text into gloss notation, converts the glosses into a pose file, and then transforms the pose file into a video.

@@ -86,4 +86,5 @@ testpaths = ["spoken_to_signed", "tests"]
 download_lexicon = "spoken_to_signed.download_lexicon:main"
 text_to_gloss = "spoken_to_signed.bin:text_to_gloss"
 text_to_gloss_to_pose = "spoken_to_signed.bin:text_to_gloss_to_pose"
+text_to_gloss_to_pose_bulk = "spoken_to_signed.bin:text_to_gloss_to_pose_bulk"
 text_to_gloss_to_pose_to_video = "spoken_to_signed.bin:text_to_gloss_to_pose_to_video"
