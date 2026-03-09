@@ -32,8 +32,9 @@ def _gloss_to_pose(
     spoken_language: str,
     signed_language: str,
     coverage_info: bool = False,
+    use_fingerspelling: bool = True,
 ) -> "Pose | tuple[Pose, list[list[TokenCoverage]]]":
-    fingerspelling_lookup = FingerspellingPoseLookup()
+    fingerspelling_lookup = FingerspellingPoseLookup() if use_fingerspelling else None
     pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
     results = [
         gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language, coverage_info=coverage_info)
@@ -175,12 +176,20 @@ def text_to_gloss_to_pose():
         help="Path to save per-token coverage statistics as a JSON file.",
     )
     args_parser.add_argument("--pose", type=str, required=True)
+    args_parser.add_argument(
+        "--no-fingerspelling",
+        action="store_true",
+        help="Disable fingerspelling fallback during pose lookup.",
+    )
     args = args_parser.parse_args()
 
     need_coverage = args.coverage_info or args.coverage_stats is not None
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    result = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language, need_coverage)
+    result = _gloss_to_pose(
+        sentences, args.lexicon, args.spoken_language, args.signed_language, need_coverage,
+        use_fingerspelling=not args.no_fingerspelling
+    )
 
     print("Text to gloss to pose")
     print("Input text:", args.text)
@@ -320,6 +329,11 @@ def text_to_gloss_to_pose_bulk():
         default=10000,
         help="Maximum number of frames per chunk when --compacted-poses is set (default: 10000).",
     )
+    args_parser.add_argument(
+        "--no-fingerspelling",
+        action="store_true",
+        help="Disable fingerspelling fallback during pose lookup.",
+    )
     args = args_parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -329,7 +343,7 @@ def text_to_gloss_to_pose_bulk():
 
     need_coverage = args.coverage_stats is not None
     stats = CoverageStats() if need_coverage else None
-    fingerspelling_lookup = FingerspellingPoseLookup()
+    fingerspelling_lookup = FingerspellingPoseLookup() if not args.no_fingerspelling else None
     pose_lookup = CSVPoseLookup(args.lexicon, backup=fingerspelling_lookup)
 
     if args.compacted_poses:
@@ -348,10 +362,16 @@ def text_to_gloss_to_pose_to_video():
     _text_input_arguments(args_parser)
     args_parser.add_argument("--lexicon", type=str, required=True)
     args_parser.add_argument("--video", type=str, required=True)
+    args_parser.add_argument(
+        "--no-fingerspelling",
+        action="store_true",
+        help="Disable fingerspelling fallback during pose lookup.",
+    )
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language,
+                          use_fingerspelling=not args.no_fingerspelling)
     _pose_to_video(pose, args.video)
 
     print("Text to gloss to pose to video")
