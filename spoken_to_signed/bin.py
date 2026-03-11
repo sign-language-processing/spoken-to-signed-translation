@@ -8,6 +8,7 @@ from pose_format import Pose
 
 from spoken_to_signed.gloss_to_pose import (
     CSVPoseLookup,
+    GlossToPoseResult,
     concatenate_poses,
     gloss_to_pose,
 )
@@ -29,7 +30,7 @@ def _gloss_to_pose(
     spoken_language: str,
     signed_language: str,
     coverage_info: bool = False,
-) -> "Pose | tuple[Pose, list[list[TokenCoverage]]]":
+) -> GlossToPoseResult:
     fingerspelling_lookup = FingerspellingPoseLookup()
     pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
     results = [
@@ -37,16 +38,14 @@ def _gloss_to_pose(
         for gloss in sentences
     ]
 
-    if not coverage_info:
-        poses = results
-        return poses[0] if len(poses) == 1 else concatenate_poses(poses, trim=False)
+    poses = [r.pose for r in results]
+    pose = poses[0] if len(poses) == 1 else concatenate_poses(poses, trim=False)
 
-    poses = [pose for pose, _ in results]
-    all_token_coverages = [coverages for _, coverages in results]
-    return (
-        poses[0] if len(poses) == 1 else concatenate_poses(poses, trim=False),
-        all_token_coverages,
-    )
+    if coverage_info:
+        all_token_coverages = [r.token_coverages for r in results]
+        return GlossToPoseResult(pose=pose, token_coverages=all_token_coverages)
+
+    return GlossToPoseResult(pose=pose)
 
 
 def _get_models_dir():
@@ -184,19 +183,16 @@ def text_to_gloss_to_pose():
     print("Output pose:", args.pose)
 
     if need_coverage:
-        pose, all_token_coverages = result
-        _print_token_coverage(all_token_coverages)
+        _print_token_coverage(result.token_coverages)
         if args.coverage_stats:
             stats = CoverageStats()
-            for sentence_coverages in all_token_coverages:
+            for sentence_coverages in result.token_coverages:
                 stats.add_sentence(sentence_coverages, text=args.text)
             stats.save(args.coverage_stats)
             print(f"Coverage stats saved to: {args.coverage_stats}")
-    else:
-        pose = result
 
     with open(args.pose, "wb") as f:
-        pose.write(f)
+        result.pose.write(f)
 
 
 def text_to_gloss_to_pose_to_video():
