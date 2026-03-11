@@ -7,7 +7,7 @@ from typing import Optional
 class TokenCoverage:
     word: Optional[str]
     gloss: str
-    matched: bool
+    exact_lexicon_match: bool
     coverage_type: Optional[str] = None  # "lexicon", "language_backup", "fingerspelling_backup", or None
     fingerspelled_keys: Optional[list[str]] = None  # set when coverage_type == "fingerspelling_backup"
 
@@ -21,7 +21,7 @@ class CoverageStats:
     def add_sentence(self, token_coverages: list[TokenCoverage], text: Optional[str] = None):
         self.sentences.append({"text": text, "tokens": [asdict(tc) for tc in token_coverages]})
         self.total_tokens += len(token_coverages)
-        self.matched_tokens += sum(1 for tc in token_coverages if tc.matched)
+        self.matched_tokens += sum(1 for tc in token_coverages if tc.exact_lexicon_match)
 
     @property
     def fraction(self) -> float:

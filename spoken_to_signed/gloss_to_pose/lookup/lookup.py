@@ -172,7 +172,7 @@ class PoseLookup:
                 TokenCoverage(
                     word=r.word,
                     gloss=r.gloss,
-                    matched=(r.coverage_type == "lexicon"),
+                    exact_lexicon_match=(r.coverage_type == "lexicon"),
                     coverage_type=r.coverage_type,
                     fingerspelled_keys=r.sub_elements,
                 )

@@ -148,10 +148,10 @@ def pose_to_video():
 
 def _print_token_coverage(all_token_coverages: list[list[TokenCoverage]]):
     total = sum(len(s) for s in all_token_coverages)
-    matched = sum(tc.matched for s in all_token_coverages for tc in s)
+    matched = sum(tc.exact_lexicon_match for s in all_token_coverages for tc in s)
     for sentence_coverages in all_token_coverages:
         for tc in sentence_coverages:
-            status = "✓" if tc.matched else "✗"
+            status = "✓" if tc.exact_lexicon_match else "✗"
             print(f"  {status}  {tc.word} -> {tc.gloss}")
     print(f"Coverage: {matched / total:.3f} ({matched}/{total} tokens matched)")
 

@@ -53,7 +53,10 @@ class FingerspellingPoseLookup(CSVPoseLookup):
                 f"Language pair {spoken_language} -> {signed_language} not supported for fingerspelling"
             )
 
-        keys, poses = zip(*self.characters_lookup(word.lower(), spoken_language, signed_language))
+        pairs = list(self.characters_lookup(word.lower(), spoken_language, signed_language))
+        if not pairs:
+            raise FileNotFoundError(f"No characters found for word '{word}' in fingerspelling lexicon")
+        keys, poses = zip(*pairs)
         poses = list(poses)
 
         # hold the last letters longer to make it more readable
