@@ -4,6 +4,7 @@ from pose_format import Pose
 
 from ..text_to_gloss.types import Gloss
 from .concatenate import concatenate_poses
+from .coverage import TokenCoverage
 from .lookup import CSVPoseLookup as CSVPoseLookup
 from .lookup import PoseLookup
 
@@ -16,7 +17,7 @@ def gloss_to_pose(
     source: str = None,
     anonymize: Union[bool, Pose] = False,
     coverage_info: bool = False,
-) -> Union[Pose, tuple]:
+) -> Union[Pose, tuple[Pose, list[TokenCoverage]]]:
     # Transform the list of glosses into a list of poses
     result = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source, coverage_info=coverage_info)
     if coverage_info:
