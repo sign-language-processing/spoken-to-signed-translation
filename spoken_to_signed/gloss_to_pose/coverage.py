@@ -14,6 +14,7 @@ class CoverageType(str, Enum):
     LEXICON = "lexicon"
     LANGUAGE_BACKUP = "language_backup"
     FINGERSPELLING_BACKUP = "fingerspelling_backup"
+    UNMATCHED = "unmatched"
 
 
 @dataclass

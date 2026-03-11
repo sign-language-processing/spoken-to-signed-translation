@@ -7,17 +7,17 @@ import json
 # ANSI color codes
 _RESET = "\033[0m"
 _COLORS = {
-    "lexicon": "\033[92m",           # bright green
-    "language_backup": "\033[93m",   # bright yellow
+    "lexicon":               "\033[92m",        # bright green
+    "language_backup":       "\033[93m",        # bright yellow
     "fingerspelling_backup": "\033[38;5;214m",  # orange (256-color)
-    None: "\033[91m",                # bright red
+    "unmatched":             "\033[91m",        # bright red
 }
 
 _LEGEND = [
-    ("lexicon", "matched via lexicon"),
-    ("language_backup", "matched via language backup"),
+    ("lexicon",               "matched via lexicon"),
+    ("language_backup",       "matched via language backup"),
     ("fingerspelling_backup", "matched via fingerspelling"),
-    (None, "not matched"),
+    ("unmatched",             "not matched"),
 ]
 
 
@@ -45,7 +45,7 @@ def visualize(coverage_path: str):
     for sentence in data["sentences"]:
         sentence_text = sentence.get("text") or " ".join(t["word"] for t in sentence["tokens"] if t.get("word"))
         colored_glosses = " ".join(
-            _colored(t["gloss"], t.get("coverage_type")) for t in sentence["tokens"]
+            _colored(t["gloss"], t.get("coverage_type") or "unmatched") for t in sentence["tokens"]
         )
         print(f"Sentence: {sentence_text}")
         print(f"Gloss:    {colored_glosses}")

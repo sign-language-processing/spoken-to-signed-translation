@@ -7,7 +7,7 @@ from typing import NamedTuple, Optional
 
 from pose_format import Pose
 
-from spoken_to_signed.gloss_to_pose.coverage import CoverageType
+from spoken_to_signed.gloss_to_pose.coverage import CoverageType, TokenCoverage
 from spoken_to_signed.gloss_to_pose.languages import LANGUAGE_BACKUP
 from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
@@ -167,8 +167,6 @@ class PoseLookup:
             raise Exception(f"No poses found for {gloss_sequence}")
 
         if coverage_info:
-            from spoken_to_signed.gloss_to_pose.coverage import TokenCoverage
-
             token_coverages = [
                 TokenCoverage(
                     word=r.word,
