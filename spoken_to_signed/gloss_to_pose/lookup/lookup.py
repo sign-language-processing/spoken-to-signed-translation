@@ -7,6 +7,7 @@ from typing import NamedTuple, Optional
 
 from pose_format import Pose
 
+from spoken_to_signed.gloss_to_pose.coverage import CoverageType
 from spoken_to_signed.gloss_to_pose.languages import LANGUAGE_BACKUP
 from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
@@ -14,7 +15,7 @@ from spoken_to_signed.text_to_gloss.types import Gloss
 
 class LookupResult(NamedTuple):
     pose: Optional[Pose]
-    coverage_type: Optional[str]
+    coverage_type: Optional[CoverageType]
     sub_elements: Optional[list]
 
 
@@ -114,14 +115,14 @@ class PoseLookup:
                     lower_term = term.lower()
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
-                        return LookupResult(self.get_pose(self.get_best_row(rows, term)), "lexicon", None)
+                        return LookupResult(self.get_pose(self.get_best_row(rows, term)), CoverageType.LEXICON, None)
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:
             result = self.lookup(word, gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source)
             # If found in the backup language's own lexicon, label as language_backup; otherwise keep the type
-            if result.coverage_type == "lexicon":
-                return LookupResult(result.pose, "language_backup", None)
+            if result.coverage_type == CoverageType.LEXICON:
+                return LookupResult(result.pose, CoverageType.LANGUAGE_BACKUP, None)
             return result
 
         # Backup strategy: revert to fingerspelling
@@ -172,7 +173,7 @@ class PoseLookup:
                 TokenCoverage(
                     word=r.word,
                     gloss=r.gloss,
-                    exact_lexicon_match=(r.coverage_type == "lexicon"),
+                    exact_lexicon_match=(r.coverage_type == CoverageType.LEXICON),
                     coverage_type=r.coverage_type,
                     fingerspelled_keys=r.sub_elements,
                 )

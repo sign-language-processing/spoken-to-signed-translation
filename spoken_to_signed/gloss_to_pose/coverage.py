@@ -1,6 +1,19 @@
 import json
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from typing import Optional
+
+
+class CoverageType(str, Enum):
+    """Coverage type for a gloss token lookup result.
+
+    Inherits from str so that values serialize to JSON naturally and existing
+    string comparisons (e.g. == "lexicon") continue to work without changes.
+    """
+
+    LEXICON = "lexicon"
+    LANGUAGE_BACKUP = "language_backup"
+    FINGERSPELLING_BACKUP = "fingerspelling_backup"
 
 
 @dataclass
@@ -8,8 +21,8 @@ class TokenCoverage:
     word: Optional[str]
     gloss: str
     exact_lexicon_match: bool
-    coverage_type: Optional[str] = None  # "lexicon", "language_backup", "fingerspelling_backup", or None
-    fingerspelled_keys: Optional[list[str]] = None  # set when coverage_type == "fingerspelling_backup"
+    coverage_type: Optional[CoverageType] = None
+    fingerspelled_keys: Optional[list[str]] = None
 
 
 @dataclass
