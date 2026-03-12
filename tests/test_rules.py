@@ -39,7 +39,7 @@ class TestToInfinitive:
         assert _to_infinitive("macht") == "machen"
 
     def test_strip_e_suffix(self):
-        # "mache" (1st person sg.) → "machen"
+        # "mache" (1st person sg. / imperative) → "machen"
         assert _to_infinitive("mache") == "machen"
 
     def test_strip_est_suffix(self):
@@ -71,27 +71,36 @@ def _make_verb_with_svp(verb_text, verb_lemma, svp_text):
 
 class TestAttachSvp:
     def test_unknown_lemma_machst_aus(self):
-        # spaCy failed to lemmatize "Machst" → lemma == word form
-        # expected: "ausmachen"
+        # spaCy failed to lemmatize "Machst" → lemma == word form → "ausmachen"
         verb, svp = _make_verb_with_svp("Machst", "Machst", "aus")
         attach_svp([verb, svp])
         assert verb.lemma_ == "ausmachen"
 
     def test_known_lemma_ziehen_an(self):
-        # spaCy correctly returned "ziehen"
-        # expected: "anziehen"
+        # spaCy correctly returned "ziehen" → lemma != word form → unchanged before svp
         verb, svp = _make_verb_with_svp("ziehst", "ziehen", "an")
         attach_svp([verb, svp])
         assert verb.lemma_ == "anziehen"
 
-    def test_verb_without_svp_is_unchanged(self):
-        # "wird's" has no separable prefix — lemma must not be touched
-        verb = MockToken("wird's", "VERB", "ROOT", "wird's")
+    def test_imperative_unknown_lemma(self):
+        # "Mache deine Hausaufgaben" — spaCy returns "Mache" as lemma
+        verb = MockToken("Mache", "VERB", "ROOT", "Mache")
         attach_svp([verb])
-        assert verb.lemma_ == "wird's"
+        assert verb.lemma_ == "machen"
 
-    def test_non_verb_non_svp_token_is_unchanged(self):
-        # Nouns etc. should pass through untouched
+    def test_imperative_already_infinitive(self):
+        # Verb in infinitive form used as imperative — spaCy returns correct lemma
+        verb = MockToken("machen", "VERB", "ROOT", "machen")
+        attach_svp([verb])
+        assert verb.lemma_ == "machen"
+
+    def test_verb_with_known_lemma_no_svp_is_unchanged(self):
+        # spaCy knows the lemma → lemma != text → not touched
+        verb = MockToken("wird", "VERB", "ROOT", "werden")
+        attach_svp([verb])
+        assert verb.lemma_ == "werden"
+
+    def test_non_verb_token_is_unchanged(self):
         noun = MockToken("Licht", "NOUN", "obj", "Licht")
         attach_svp([noun])
         assert noun.lemma_ == "Licht"

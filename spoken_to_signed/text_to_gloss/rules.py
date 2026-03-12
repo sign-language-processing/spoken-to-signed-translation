@@ -50,11 +50,13 @@ def _to_infinitive(lemma: str) -> str:
 
 def attach_svp(tokens):
     for token in tokens:
-        # fix the wrong verb lemma, but only for verbs that actually have a separable verb particle
+        # When spaCy fails to lemmatize a verb it returns the word form itself;
+        # apply heuristic infinitive recovery for all such verbs (covers both
+        # separable-prefix constructions and imperatives like "Mache").
         if token.pos_ == "VERB":
-            if any(child.dep_ == "svp" for child in token.children):
+            if token.lemma_.lower() == token.text.lower():
                 token.lemma_ = _to_infinitive(token.lemma_)
-        # and prefix the separable verb particle to the corrected lemma
+        # prefix the separable verb particle to the (now corrected) lemma
         elif token.dep_ == "svp":
             token.head.lemma_ = token.lemma_ + token.head.lemma_
 
