@@ -203,8 +203,8 @@ def text_to_gloss_to_pose_to_video():
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
-    _pose_to_video(pose, args.video)
+    result = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    _pose_to_video(result.pose, args.video)
 
     print("Text to gloss to pose to video")
     print("Input text:", args.text)
