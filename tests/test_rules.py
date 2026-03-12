@@ -1,10 +1,4 @@
-"""Tests for attach_svp and _to_infinitive in rules.py.
-
-Marked 'slow' so they are excluded from the lightweight CI run.
-Run locally with: pytest -m slow
-"""
-import pytest
-
+"""Tests for attach_svp and _to_infinitive in rules.py."""
 from spoken_to_signed.text_to_gloss.rules import _to_infinitive, attach_svp
 
 
@@ -29,7 +23,6 @@ class MockToken:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.slow
 class TestToInfinitive:
     def test_already_infinitive_en(self):
         assert _to_infinitive("machen") == "machen"
@@ -76,7 +69,6 @@ def _make_verb_with_svp(verb_text, verb_lemma, svp_text):
     return verb, svp
 
 
-@pytest.mark.slow
 class TestAttachSvp:
     def test_unknown_lemma_machst_aus(self):
         # spaCy failed to lemmatize "Machst" → lemma == word form
