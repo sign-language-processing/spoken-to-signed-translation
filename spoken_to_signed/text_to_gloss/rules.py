@@ -25,13 +25,35 @@ def print_token(token):
     )
 
 
+def _to_infinitive(lemma: str) -> str:
+    """Convert a verb lemma to infinitive form.
+
+    When spaCy fails to lemmatize a verb it returns the word form itself (e.g.
+    "Machst" for "machen").  Strip common German conjugation suffixes so that we
+    reconstruct a reasonable infinitive rather than producing garbage like
+    "machstn".  Lemmas that already end in "n" (i.e. are already in infinitive
+    form) are returned unchanged.
+    """
+    lemma = lemma.lower()
+    if lemma.endswith("en"):
+        return lemma
+    # Strip conjugation suffixes in order from longest to shortest so that
+    # "machest" is handled before the shorter "est" branch would be tried.
+    for suffix in ("est", "st", "et", "t", "e"):
+        if lemma.endswith(suffix) and len(lemma) > len(suffix) + 1:
+            lemma = lemma[: -len(suffix)]
+            break
+    if not lemma.endswith("en"):
+        lemma += "en"
+    return lemma
+
+
 def attach_svp(tokens):
     for token in tokens:
-        # fix the wrong verb lemma first
+        # fix the wrong verb lemma, but only for verbs that actually have a separable verb particle
         if token.pos_ == "VERB":
-            token.lemma_ = token.lemma_.lower()
-            if not token.lemma_.endswith("n"):
-                token.lemma_ += "n"
+            if any(child.dep_ == "svp" for child in token.children):
+                token.lemma_ = _to_infinitive(token.lemma_)
         # and prefix the separable verb particle to the corrected lemma
         elif token.dep_ == "svp":
             token.head.lemma_ = token.lemma_ + token.head.lemma_
