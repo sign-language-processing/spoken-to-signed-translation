@@ -217,13 +217,10 @@ def _process_pose(text, spoken_language, glosser, pose_lookup, signed_language, 
         gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language, coverage_info=need_coverage)
         for gloss in sentences
     ]
+    poses = [r.pose for r in results]
     if need_coverage:
-        poses = [pose for pose, _ in results]
-        all_token_coverages = [coverages for _, coverages in results]
-        for sentence_coverages in all_token_coverages:
-            stats.add_sentence(sentence_coverages, text=text)
-    else:
-        poses = results
+        for r in results:
+            stats.add_sentence(r.token_coverages, text=text)
     return poses[0] if len(poses) == 1 else concatenate_poses(poses, trim=False)
 
 
