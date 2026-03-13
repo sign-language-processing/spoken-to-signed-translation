@@ -212,8 +212,11 @@ def text_to_gloss_to_pose_to_video():
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
     result = _gloss_to_pose(
-        sentences, args.lexicon, args.spoken_language, args.signed_language,
-        disable_fingerspelling=args.disable_fingerspelling
+        sentences,
+        args.lexicon,
+        args.spoken_language,
+        args.signed_language,
+        disable_fingerspelling=args.disable_fingerspelling,
     )
     _pose_to_video(result.pose, args.video)
 
