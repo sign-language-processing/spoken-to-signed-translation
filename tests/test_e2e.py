@@ -65,5 +65,5 @@ def test_fingerspelling_produces_pose():
 
 def test_no_fingerspelling_fails_for_unknown_word():
     with tempfile.TemporaryDirectory() as tmp_dir:
-        result, _ = _run_text_to_gloss_to_pose(tmp_dir, "abcd", ["--no-fingerspelling"])
+        result, _ = _run_text_to_gloss_to_pose(tmp_dir, "abcd", ["--disable-fingerspelling"])
         assert result.returncode != 0, "Should fail without fingerspelling for unknown word"
