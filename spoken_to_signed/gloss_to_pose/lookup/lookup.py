@@ -2,12 +2,30 @@ import math
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+from typing import NamedTuple, Optional
 
 from pose_format import Pose
 
+from spoken_to_signed.gloss_to_pose.coverage import CoverageType, TokenCoverage
 from spoken_to_signed.gloss_to_pose.languages import LANGUAGE_BACKUP
 from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
+
+
+class LookupResult(NamedTuple):
+    pose: Optional[Pose]
+    coverage_type: Optional[CoverageType]
+    sub_elements: Optional[list]
+
+
+@dataclass
+class PairResult:
+    word: str
+    gloss: str
+    pose: Optional[Pose] = field(default=None)
+    coverage_type: Optional[str] = field(default=None)
+    sub_elements: Optional[list] = field(default=None)
 
 
 class PoseLookup:
@@ -82,7 +100,9 @@ class PoseLookup:
         # Return the highest priority row
         return rows[0]
 
-    def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
+    def lookup(
+        self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None
+    ) -> LookupResult:
         lookup_list = [
             (self.words_index, (spoken_language, signed_language, word)),
             (self.glosses_index, (spoken_language, signed_language, word)),
@@ -95,11 +115,15 @@ class PoseLookup:
                     lower_term = term.lower()
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
-                        return self.get_pose(self.get_best_row(rows, term))
+                        return LookupResult(self.get_pose(self.get_best_row(rows, term)), CoverageType.LEXICON, None)
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:
-            return self.lookup(word, gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source)
+            result = self.lookup(word, gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source)
+            # If found in the backup language's own lexicon, label as language_backup; otherwise keep the type
+            if result.coverage_type == CoverageType.LEXICON:
+                return LookupResult(result.pose, CoverageType.LANGUAGE_BACKUP, None)
+            return result
 
         # Backup strategy: revert to fingerspelling
         if self.backup is not None:
@@ -107,25 +131,53 @@ class PoseLookup:
 
         raise FileNotFoundError
 
-    def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None):
+    def lookup_sequence(
+        self,
+        glosses: Gloss,
+        spoken_language: str,
+        signed_language: str,
+        source: str = None,
+        coverage_info: bool = False,
+    ):
         def lookup_pair(pair):
             word, gloss = pair
             if word == "":
-                return None
+                return PairResult(word=word, gloss=gloss)
 
             try:
-                return self.lookup(word, gloss, spoken_language, signed_language)
+                result = self.lookup(word, gloss, spoken_language, signed_language)
+                return PairResult(
+                    word=word,
+                    gloss=gloss,
+                    pose=result.pose,
+                    coverage_type=result.coverage_type,
+                    sub_elements=result.sub_elements,
+                )
             except FileNotFoundError as e:
                 print(e)
-                return None
+                return PairResult(word=word, gloss=gloss)
 
         with ThreadPoolExecutor() as executor:
-            results = executor.map(lookup_pair, glosses)
+            results = list(executor.map(lookup_pair, glosses))
 
-        poses = [result for result in results if result is not None]  # Filter out None results
+        poses = [r.pose for r in results if r.pose is not None]
 
         if len(poses) == 0:
             gloss_sequence = " ".join([f"{word}/{gloss}" for word, gloss in glosses])
             raise Exception(f"No poses found for {gloss_sequence}")
+
+        if coverage_info:
+            token_coverages = [
+                TokenCoverage(
+                    word=r.word,
+                    gloss=r.gloss,
+                    exact_lexicon_match=(r.coverage_type == CoverageType.LEXICON),
+                    coverage_type=r.coverage_type,
+                    fingerspelled_keys=r.sub_elements,
+                )
+                for r in results
+                if r.word != ""  # exclude empty/skipped tokens
+            ]
+            return poses, token_coverages
 
         return poses
