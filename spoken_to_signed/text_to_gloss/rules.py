@@ -1,5 +1,6 @@
 # originally written by Anne Goehring
 # adapted by Mathias Müller
+import re
 import sys
 
 from .common import load_spacy_model
@@ -25,14 +26,38 @@ def print_token(token):
     )
 
 
+def _to_infinitive(lemma: str) -> str:
+    """Convert a verb lemma to infinitive form.
+
+    When spaCy fails to lemmatize a verb it returns the word form itself (e.g.
+    "Machst" for "machen").  Strip common German conjugation suffixes so that we
+    reconstruct a reasonable infinitive rather than producing garbage like
+    "machstn".  Lemmas that already end in "n" (i.e. are already in infinitive
+    form) are returned unchanged.
+    """
+    lemma = lemma.lower()
+    if lemma.endswith("en"):
+        return lemma
+    # Strip conjugation suffixes in order from longest to shortest so that
+    # "machest" is handled before the shorter "est" branch would be tried.
+    for suffix in ("est", "st", "et", "t", "e"):
+        if lemma.endswith(suffix) and len(lemma) > len(suffix) + 1:
+            lemma = lemma[: -len(suffix)]
+            break
+    if not lemma.endswith("en"):
+        lemma += "en"
+    return lemma
+
+
 def attach_svp(tokens):
     for token in tokens:
-        # fix the wrong verb lemma first
+        # When spaCy fails to lemmatize a verb it returns the word form itself;
+        # apply heuristic infinitive recovery for all such verbs (covers both
+        # separable-prefix constructions and imperatives like "Mache").
         if token.pos_ == "VERB":
-            token.lemma_ = token.lemma_.lower()
-            if not token.lemma_.endswith("n"):
-                token.lemma_ += "n"
-        # and prefix the separable verb particle to the corrected lemma
+            if token.lemma_.lower() == token.text.lower():
+                token.lemma_ = _to_infinitive(token.lemma_)
+        # prefix the separable verb particle to the (now corrected) lemma
         elif token.dep_ == "svp":
             token.head.lemma_ = token.lemma_ + token.head.lemma_
 
@@ -371,9 +396,26 @@ def clause_to_gloss(clause, lang: str, punctuation=False) -> tuple[list[str], li
     return glosses, tokens
 
 
+def expand_contractions_de(text: str) -> str:
+    """Expand German verb contractions of the form "verb's" → "verb es".
+
+    Lowercase "'s" is treated as a contraction of the pronoun "es" (e.g.
+    "wird's" → "wird es", "gibt's" → "gibt es").  Uppercase "'s" is left
+    untouched because it is almost certainly a possessive suffix on a proper
+    noun or brand name (e.g. "McDonald's", "Anna's").
+
+    Known limitation: a sentence-initial contracted verb (e.g. "Gibt's noch
+    Kaffee?") starts with a capital letter and will not be expanded.
+    """
+    return re.sub(r"\b([a-z]\w*)'s\b", r"\1 es", text)
+
+
 def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = "de", punctuation=False) -> dict:
     if text.strip() == "":
         return {"glosses": [], "tokens": [], "gloss_string": ""}
+
+    if lang == "de":
+        text = expand_contractions_de(text)
 
     doc = spacy_model(text)
 

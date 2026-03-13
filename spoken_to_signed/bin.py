@@ -30,8 +30,9 @@ def _gloss_to_pose(
     spoken_language: str,
     signed_language: str,
     coverage_info: bool = False,
+    disable_fingerspelling: bool = False,
 ) -> GlossToPoseResult:
-    fingerspelling_lookup = FingerspellingPoseLookup()
+    fingerspelling_lookup = None if disable_fingerspelling else FingerspellingPoseLookup()
     pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
     results = [
         gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language, coverage_info=coverage_info)
@@ -118,6 +119,11 @@ def _text_input_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--signed-language", choices=signed_languages, required=True)
 
 
+def _lexicon_input_arguments(parser: argparse.ArgumentParser):
+    parser.add_argument("--lexicon", type=str, required=True)
+    parser.add_argument("--disable-fingerspelling", action="store_true", help="Disable fingerspelling fallback")
+
+
 def text_to_gloss():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
@@ -158,7 +164,7 @@ def _print_token_coverage(all_token_coverages: list[list[TokenCoverage]]):
 def text_to_gloss_to_pose():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
-    args_parser.add_argument("--lexicon", type=str, required=True)
+    _lexicon_input_arguments(args_parser)
     args_parser.add_argument(
         "--coverage-info",
         action="store_true",
@@ -176,7 +182,9 @@ def text_to_gloss_to_pose():
     need_coverage = args.coverage_info or args.coverage_stats is not None
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    result = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language, need_coverage)
+    result = _gloss_to_pose(
+        sentences, args.lexicon, args.spoken_language, args.signed_language, need_coverage, args.disable_fingerspelling
+    )
 
     print("Text to gloss to pose")
     print("Input text:", args.text)
@@ -198,12 +206,14 @@ def text_to_gloss_to_pose():
 def text_to_gloss_to_pose_to_video():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
-    args_parser.add_argument("--lexicon", type=str, required=True)
+    _lexicon_input_arguments(args_parser)
     args_parser.add_argument("--video", type=str, required=True)
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
-    result = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    result = _gloss_to_pose(
+        sentences, args.lexicon, args.spoken_language, args.signed_language, disable_fingerspelling=args.disable_fingerspelling
+    )
     _pose_to_video(result.pose, args.video)
 
     print("Text to gloss to pose to video")
