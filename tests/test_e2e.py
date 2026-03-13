@@ -30,3 +30,40 @@ def test_text_to_gloss_to_pose():
             pose = Pose.read(f.read())
 
         assert pose.body.data.shape[0] > 0, "Pose has no frames"
+
+
+def _run_text_to_gloss_to_pose(tmp_dir: str, text: str, extra_args: list[str] = None):
+    pose_path = Path(tmp_dir) / "output.pose"
+
+    cmd = [
+        "text_to_gloss_to_pose",
+        "--text", text,
+        "--glosser", "simple",
+        "--lexicon", "assets/dummy_lexicon",
+        "--spoken-language", "de",
+        "--signed-language", "sgg",
+        "--pose", str(pose_path),
+    ]
+    if extra_args:
+        cmd.extend(extra_args)
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return result, pose_path
+
+
+def test_fingerspelling_produces_pose():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        result, pose_path = _run_text_to_gloss_to_pose(tmp_dir, "abcd")
+        assert result.returncode == 0, f"Command failed: {result.stderr}"
+        assert pose_path.exists(), "Pose file was not created"
+
+        with open(pose_path, "rb") as f:
+            pose = Pose.read(f.read())
+
+        assert pose.body.data.shape[0] > 0, "Fingerspelled word should produce frames"
+
+
+def test_no_fingerspelling_fails_for_unknown_word():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        result, _ = _run_text_to_gloss_to_pose(tmp_dir, "abcd", ["--disable-fingerspelling"])
+        assert result.returncode != 0, "Should fail without fingerspelling for unknown word"

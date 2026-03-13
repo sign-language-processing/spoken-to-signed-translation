@@ -22,9 +22,15 @@ def _text_to_gloss(text: str, language: str, glosser: str, **kwargs) -> list[Glo
     return module.text_to_gloss(text=text, language=language, **kwargs)
 
 
-def _gloss_to_pose(sentences: list[Gloss], lexicon: str, spoken_language: str, signed_language: str) -> Pose:
-    fingerspelling_lookup = FingerspellingPoseLookup()
-    pose_lookup = CSVPoseLookup(lexicon, backup=fingerspelling_lookup)
+def _gloss_to_pose(
+    sentences: list[Gloss],
+    lexicon: str,
+    spoken_language: str,
+    signed_language: str,
+    disable_fingerspelling: bool = False,
+) -> Pose:
+    backup = None if disable_fingerspelling else FingerspellingPoseLookup()
+    pose_lookup = CSVPoseLookup(lexicon, backup=backup)
     poses = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
     if len(poses) == 1:
         return poses[0]
@@ -81,6 +87,11 @@ def _pose_to_video(pose: Pose, video_path: str):
     subprocess.run(args, check=True)
 
 
+def _lexicon_input_arguments(parser: argparse.ArgumentParser):
+    parser.add_argument("--lexicon", type=str, required=True)
+    parser.add_argument("--disable-fingerspelling", action="store_true", help="Disable fingerspelling fallback")
+
+
 def _text_input_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--text", type=str, required=True)
     parser.add_argument("--glosser", choices=["simple", "spacylemma", "rules", "nmt"], required=True)
@@ -131,12 +142,14 @@ def pose_to_video():
 def text_to_gloss_to_pose():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
-    args_parser.add_argument("--lexicon", type=str, required=True)
+    _lexicon_input_arguments(args_parser)
     args_parser.add_argument("--pose", type=str, required=True)
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    pose = _gloss_to_pose(
+        sentences, args.lexicon, args.spoken_language, args.signed_language, args.disable_fingerspelling
+    )
 
     with open(args.pose, "wb") as f:
         pose.write(f)
@@ -149,12 +162,14 @@ def text_to_gloss_to_pose():
 def text_to_gloss_to_pose_to_video():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
-    args_parser.add_argument("--lexicon", type=str, required=True)
+    _lexicon_input_arguments(args_parser)
     args_parser.add_argument("--video", type=str, required=True)
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
-    pose = _gloss_to_pose(sentences, args.lexicon, args.spoken_language, args.signed_language)
+    pose = _gloss_to_pose(
+        sentences, args.lexicon, args.spoken_language, args.signed_language, args.disable_fingerspelling
+    )
     _pose_to_video(pose, args.video)
 
     print("Text to gloss to pose to video")
