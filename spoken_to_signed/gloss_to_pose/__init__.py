@@ -15,9 +15,14 @@ def gloss_to_pose(
     signed_language: str,
     source: str = None,
     anonymize: Union[bool, Pose] = False,
-) -> Pose:
+    coverage_info: bool = False,
+) -> Union[Pose, tuple]:
     # Transform the list of glosses into a list of poses
-    poses = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source)
+    result = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source, coverage_info=coverage_info)
+    if coverage_info:
+        poses, coverage = result
+    else:
+        poses = result
 
     # Anonymize poses
     if anonymize:
@@ -40,4 +45,6 @@ def gloss_to_pose(
             poses = [remove_appearance(pose) for pose in poses]
 
     # Concatenate the poses to create a single pose
-    return concatenate_poses(poses)
+    pose = concatenate_poses(poses)
+
+    return (pose, coverage) if coverage_info else pose
