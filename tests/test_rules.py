@@ -1,5 +1,5 @@
-"""Tests for attach_svp and _to_infinitive in rules.py."""
-from spoken_to_signed.text_to_gloss.rules import _to_infinitive, attach_svp
+"""Tests for attach_svp, _to_infinitive, and expand_contractions_de in rules.py."""
+from spoken_to_signed.text_to_gloss.rules import _to_infinitive, attach_svp, expand_contractions_de
 
 
 class MockToken:
@@ -16,6 +16,30 @@ class MockToken:
     @property
     def children(self):
         return iter(self._children)
+
+
+# ---------------------------------------------------------------------------
+# expand_contractions_de
+# ---------------------------------------------------------------------------
+
+
+class TestExpandContractionsDE:
+    def test_lowercase_contraction_expanded(self):
+        assert expand_contractions_de("Für die Falcon Bank wird's immer ungemütlicher") == (
+            "Für die Falcon Bank wird es immer ungemütlicher"
+        )
+
+    def test_multiple_contractions(self):
+        assert expand_contractions_de("gibt's und geht's") == "gibt es und geht es"
+
+    def test_uppercase_possessive_untouched(self):
+        assert expand_contractions_de("McDonald's Burger") == "McDonald's Burger"
+
+    def test_mixed(self):
+        assert expand_contractions_de("Anna's Katze gibt's nicht") == "Anna's Katze gibt es nicht"
+
+    def test_no_contraction(self):
+        assert expand_contractions_de("Kleine Kinder essen Pizza.") == "Kleine Kinder essen Pizza."
 
 
 # ---------------------------------------------------------------------------

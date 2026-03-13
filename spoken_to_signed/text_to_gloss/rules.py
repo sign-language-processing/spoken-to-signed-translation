@@ -1,5 +1,6 @@
 # originally written by Anne Goehring
 # adapted by Mathias Müller
+import re
 import sys
 
 from .common import load_spacy_model
@@ -395,9 +396,26 @@ def clause_to_gloss(clause, lang: str, punctuation=False) -> tuple[list[str], li
     return glosses, tokens
 
 
+def expand_contractions_de(text: str) -> str:
+    """Expand German verb contractions of the form "verb's" → "verb es".
+
+    Lowercase "'s" is treated as a contraction of the pronoun "es" (e.g.
+    "wird's" → "wird es", "gibt's" → "gibt es").  Uppercase "'s" is left
+    untouched because it is almost certainly a possessive suffix on a proper
+    noun or brand name (e.g. "McDonald's", "Anna's").
+
+    Known limitation: a sentence-initial contracted verb (e.g. "Gibt's noch
+    Kaffee?") starts with a capital letter and will not be expanded.
+    """
+    return re.sub(r"\b([a-z]\w*)'s\b", r"\1 es", text)
+
+
 def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = "de", punctuation=False) -> dict:
     if text.strip() == "":
         return {"glosses": [], "tokens": [], "gloss_string": ""}
+
+    if lang == "de":
+        text = expand_contractions_de(text)
 
     doc = spacy_model(text)
 
