@@ -1,5 +1,5 @@
-"""Tests for attach_svp, _to_infinitive, and expand_contractions_de in rules.py."""
-from spoken_to_signed.text_to_gloss.rules import _to_infinitive, attach_svp, expand_contractions_de
+"""Tests for rules.py helper functions."""
+from spoken_to_signed.text_to_gloss.rules import _to_infinitive, attach_svp, expand_contractions_de, gloss_de_poss_pronoun
 
 
 class MockToken:
@@ -128,3 +128,35 @@ class TestAttachSvp:
         noun = MockToken("Licht", "NOUN", "obj", "Licht")
         attach_svp([noun])
         assert noun.lemma_ == "Licht"
+
+
+# ---------------------------------------------------------------------------
+# gloss_de_poss_pronoun
+# ---------------------------------------------------------------------------
+
+
+class TestGlossDePossPronoun:
+    def _token(self, text):
+        return MockToken(text, "DET", "PPOSAT", text.lower())
+
+    def test_dein(self):
+        assert gloss_de_poss_pronoun(self._token("deine")) == "dein-IX"
+
+    def test_mein(self):
+        assert gloss_de_poss_pronoun(self._token("mein")) == "mein-IX"
+
+    def test_sein(self):
+        assert gloss_de_poss_pronoun(self._token("sein")) == "sein-IX"
+
+    def test_ihr_lowercase(self):
+        assert gloss_de_poss_pronoun(self._token("ihr")) == "ihr-IX"
+
+    def test_Ihr_uppercase(self):
+        # Uppercase "Ihr" (formal "your") maps to "Ihr-IX"
+        assert gloss_de_poss_pronoun(self._token("Ihre")) == "Ihr-IX"
+
+    def test_unser(self):
+        assert gloss_de_poss_pronoun(self._token("unser")) == "unser-IX"
+
+    def test_euer(self):
+        assert gloss_de_poss_pronoun(self._token("euer")) == "euer-IX"

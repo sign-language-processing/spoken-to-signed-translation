@@ -268,8 +268,7 @@ def gloss_de_poss_pronoun(token):
         "e": "euer",
     }
 
-    # return 'IX-'+pposat_map[token.text[0]]
-    return "(" + pposat_map[token.text[0]] + ")"
+    return pposat_map[token.text[0]] + "-IX"
 
 
 def glossify(tokens):
@@ -287,7 +286,7 @@ def glossify(tokens):
         elif t.pos_ == "ADV":
             gloss = t.text.lower()
 
-        # mark German attributive possessive pronouns: put the base form in parentheses, e.g. (mein)
+        # mark German attributive possessive pronouns with "-IX" suffix, e.g. dein-IX
         elif t.tag_ == "PPOSAT":
             gloss = gloss_de_poss_pronoun(t)
 
