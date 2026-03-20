@@ -1,4 +1,4 @@
-from typing import Union
+from typing import NamedTuple, Union
 
 from pose_format import Pose
 
@@ -8,6 +8,10 @@ from .lookup import CSVPoseLookup as CSVPoseLookup
 from .lookup import PoseLookup
 
 
+class GlossToPoseResult(NamedTuple):
+    pose: Pose
+
+
 def gloss_to_pose(
     glosses: Gloss,
     pose_lookup: PoseLookup,
@@ -15,11 +19,9 @@ def gloss_to_pose(
     signed_language: str,
     source: str = None,
     anonymize: Union[bool, Pose] = False,
-) -> Pose:
-    # Transform the list of glosses into a list of poses
+) -> GlossToPoseResult:
     poses = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source)
 
-    # Anonymize poses
     if anonymize:
         try:
             from pose_anonymization.appearance import (
@@ -39,5 +41,4 @@ def gloss_to_pose(
             print("Removing appearance...")
             poses = [remove_appearance(pose) for pose in poses]
 
-    # Concatenate the poses to create a single pose
-    return concatenate_poses(poses)
+    return GlossToPoseResult(concatenate_poses(poses))

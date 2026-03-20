@@ -2,9 +2,10 @@
 # adapted by Mathias Müller
 import re
 import sys
+from typing import NamedTuple
 
 from .common import load_spacy_model
-from .types import Gloss
+from .types import Gloss, GlossItem
 
 LANGUAGE_MODELS_RULES = {
     "de": ("de_core_news_lg", "de_core_news_md", "de_core_news_sm"),
@@ -319,7 +320,12 @@ def glossify(tokens):
         yield (gloss, t.text)
 
 
-def clause_to_gloss(clause, lang: str, punctuation=False) -> tuple[list[str], list[str]]:
+class ClauseGlossResult(NamedTuple):
+    glosses: tuple[str, ...]
+    tokens: tuple[str, ...]
+
+
+def clause_to_gloss(clause, lang: str, punctuation=False) -> ClauseGlossResult:
     # Rule 1: Extract subject-verb-object triplets and reorder them
     clause = reorder_svo_triplets(clause)
 
@@ -392,7 +398,7 @@ def clause_to_gloss(clause, lang: str, punctuation=False) -> tuple[list[str], li
     # Rule 7: Glossify all tokens, i.e. lemmatize most tokens
     glosses, tokens = zip(*list(glossify(tokens)))
 
-    return glosses, tokens
+    return ClauseGlossResult(glosses, tokens)
 
 
 def expand_contractions_de(text: str) -> str:
@@ -462,4 +468,4 @@ def text_to_gloss(text: str, language: str, punctuation=False, **unused_kwargs) 
     glosses = output_dict["glosses"]
     tokens = output_dict["tokens"]
 
-    return [list(zip(tokens, glosses))]
+    return [[GlossItem(t, g) for t, g in zip(tokens, glosses)]]

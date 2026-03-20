@@ -1,5 +1,5 @@
 from .common import load_spacy_model
-from .types import Gloss
+from .types import Gloss, GlossItem
 
 LANGUAGE_MODELS_SPACY = {
     "de": "de_core_news_lg",
@@ -28,7 +28,6 @@ def text_to_gloss(text: str, language: str, ignore_punctuation: bool = False, **
             if token.is_punct:
                 continue
 
-        gloss = (token.text, token.lemma_)
-        glosses.append(gloss)
+        glosses.append(GlossItem(token.text, token.lemma_))
 
     return [glosses]

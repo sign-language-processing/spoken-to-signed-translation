@@ -1,3 +1,5 @@
+from typing import NamedTuple, Optional
+
 import numpy as np
 from pose_format import Pose
 from pose_format.utils.generic import (
@@ -10,6 +12,11 @@ from pose_format.utils.generic import (
 from spoken_to_signed.gloss_to_pose.smoothing import smooth_concatenate_poses
 
 
+class SigningBoundary(NamedTuple):
+    start: Optional[int]
+    end: Optional[int]
+
+
 class ConcatenationSettings:
     is_reduce_holistic = True
 
@@ -18,9 +25,7 @@ def normalize_pose(pose: Pose) -> Pose:
     return pose.normalize(pose_normalization_info(pose.header))
 
 
-def get_signing_boundary(pose: Pose, wrist_index: int, elbow_index: int) -> tuple[int, int]:
-    # Ideally, this could use a sign language detection model.
-
+def get_signing_boundary(pose: Pose, wrist_index: int, elbow_index: int) -> SigningBoundary:
     pose_length = len(pose.body.data)
 
     wrist_exists = pose.body.confidence[:, 0, wrist_index] > 0
@@ -32,11 +37,14 @@ def get_signing_boundary(pose: Pose, wrist_index: int, elbow_index: int) -> tupl
 
     wrist_above_elbow = wrist_y < elbow_y
     if not np.any(wrist_above_elbow):
-        return None, None
+        return SigningBoundary(None, None)
     first_active_frame = np.argmax(wrist_above_elbow).tolist()
     last_active_frame = pose_length - np.argmax(wrist_above_elbow[::-1])
 
-    return (max(first_non_zero_index, first_active_frame - 5), min(last_non_zero_index, last_active_frame + 5))
+    return SigningBoundary(
+        start=max(first_non_zero_index, first_active_frame - 5),
+        end=min(last_non_zero_index, last_active_frame + 5),
+    )
 
 
 def trim_pose(pose, start=True, end=True):

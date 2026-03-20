@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
 
@@ -68,7 +69,7 @@ def few_shots():
     return messages
 
 
-def sentence_to_glosses(sentence: str) -> GlossItem:
+def sentence_to_glosses(sentence: str) -> Iterator[GlossItem]:
     for item in sentence.split(" "):
         regex_with_mouthing = r"⌘(.*?)\((.*?)\)"
         if match := re.match(regex_with_mouthing, item):
@@ -81,7 +82,7 @@ def sentence_to_glosses(sentence: str) -> GlossItem:
                 sub_item_gloss, sub_item_word = sub_item.split("/")
             else:
                 sub_item_gloss = sub_item_word = sub_item
-            yield sub_item_word, sub_item_gloss
+            yield GlossItem(sub_item_word, sub_item_gloss)
 
 
 def text_to_gloss(text: str, language: str, signed_language: str, **kwargs) -> list[Gloss]:

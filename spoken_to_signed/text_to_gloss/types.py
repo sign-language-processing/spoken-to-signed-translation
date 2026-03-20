@@ -1,4 +1,9 @@
-from typing import Optional
+from typing import NamedTuple, Optional
 
-GlossItem = tuple[Optional[str], str]  # word, then gloss
+
+class GlossItem(NamedTuple):
+    word: Optional[str]
+    gloss: str
+
+
 Gloss = list[GlossItem]

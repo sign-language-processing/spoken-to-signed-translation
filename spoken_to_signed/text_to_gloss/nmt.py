@@ -7,7 +7,7 @@ import sentencepiece as spm
 import torch as pt
 from sockeye import inference, model
 
-from .types import Gloss
+from .types import Gloss, GlossItem
 
 MODELS_PATH = "./models"
 
@@ -177,4 +177,4 @@ def text_to_gloss(text: str, language: str, nbest_size: int = 3, **kwargs) -> li
 
     tokens = [None] * len(glosses)
 
-    return [list(zip(tokens, glosses))]
+    return [[GlossItem(t, g) for t, g in zip(tokens, glosses)]]
