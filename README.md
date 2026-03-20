@@ -79,6 +79,22 @@ text_to_gloss_to_pose \
   --pose <output_pose_file_path>.pose
 ```
 
+Add `--coverage-info` to print per-token lexicon coverage to stdout, or `--coverage-stats <file.json>` to save it to a JSON file.
+
+#### Visualizing Coverage
+
+The `scripts/visualize_coverage.py` script renders a coverage JSON file (produced by `--coverage-stats`) in the terminal, coloring each gloss token by how it was matched:
+
+```bash
+python scripts/visualize_coverage.py <coverage_file>.json
+```
+
+Color legend:
+- Green: matched via lexicon
+- Yellow: matched via language backup
+- Orange: matched via fingerspelling
+- Red: not matched
+
 #### Text-to-Gloss-to-Pose-to-Video Translation
 
 This script translates input text into gloss notation, converts the glosses into a pose file, and then transforms the pose file into a video.
