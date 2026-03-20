@@ -37,7 +37,7 @@ def get_signing_boundary(pose: Pose, wrist_index: int, elbow_index: int) -> Sign
 
     wrist_above_elbow = wrist_y < elbow_y
     if not np.any(wrist_above_elbow):
-        return SigningBoundary(None, None)
+        return SigningBoundary(start=None, end=None)
     first_active_frame = np.argmax(wrist_above_elbow).tolist()
     last_active_frame = pose_length - np.argmax(wrist_above_elbow[::-1])
 

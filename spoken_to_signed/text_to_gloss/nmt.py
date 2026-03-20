@@ -177,4 +177,4 @@ def text_to_gloss(text: str, language: str, nbest_size: int = 3, **kwargs) -> li
 
     tokens = [None] * len(glosses)
 
-    return [[GlossItem(t, g) for t, g in zip(tokens, glosses)]]
+    return [[GlossItem(word=t, gloss=g) for t, g in zip(tokens, glosses)]]

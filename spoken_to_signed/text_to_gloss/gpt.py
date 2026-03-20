@@ -82,7 +82,7 @@ def sentence_to_glosses(sentence: str) -> Iterator[GlossItem]:
                 sub_item_gloss, sub_item_word = sub_item.split("/")
             else:
                 sub_item_gloss = sub_item_word = sub_item
-            yield GlossItem(sub_item_word, sub_item_gloss)
+            yield GlossItem(word=sub_item_word, gloss=sub_item_gloss)
 
 
 def text_to_gloss(text: str, language: str, signed_language: str, **kwargs) -> list[Gloss]:

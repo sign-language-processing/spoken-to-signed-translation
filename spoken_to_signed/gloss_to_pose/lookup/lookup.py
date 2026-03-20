@@ -11,7 +11,7 @@ from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
 
 
-class LookupResult(NamedTuple):
+class PoseResult(NamedTuple):
     pose: Pose
 
 
@@ -89,7 +89,7 @@ class PoseLookup:
 
     def lookup(
         self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None
-    ) -> LookupResult:
+    ) -> PoseResult:
         lookup_list = [
             (self.words_index, (spoken_language, signed_language, word)),
             (self.glosses_index, (spoken_language, signed_language, word)),
@@ -102,7 +102,7 @@ class PoseLookup:
                     lower_term = term.lower()
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
-                        return LookupResult(self.get_pose(self.get_best_row(rows, term)))
+                        return PoseResult(pose=self.get_pose(self.get_best_row(rows, term)))
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:
@@ -114,7 +114,9 @@ class PoseLookup:
 
         raise FileNotFoundError
 
-    def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None):
+    def lookup_sequence(
+        self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None
+    ) -> list[PoseResult]:
         def lookup_pair(pair):
             word, gloss = pair
             if word == "":
@@ -133,4 +135,4 @@ class PoseLookup:
             gloss_sequence = " ".join([f"{word}/{gloss}" for word, gloss in glosses])
             raise Exception(f"No poses found for {gloss_sequence}")
 
-        return [r.pose for r in results]
+        return results

@@ -8,7 +8,7 @@ from pose_format import Pose
 
 from spoken_to_signed.gloss_to_pose import (
     CSVPoseLookup,
-    GlossToPoseResult,
+    PoseResult,
     concatenate_poses,
     gloss_to_pose,
 )
@@ -29,13 +29,13 @@ def _gloss_to_pose(
     spoken_language: str,
     signed_language: str,
     disable_fingerspelling: bool = False,
-) -> GlossToPoseResult:
+) -> PoseResult:
     backup = None if disable_fingerspelling else FingerspellingPoseLookup()
     pose_lookup = CSVPoseLookup(lexicon, backup=backup)
     results = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
     if len(results) == 1:
         return results[0]
-    return GlossToPoseResult(concatenate_poses([r.pose for r in results], trim=False))
+    return PoseResult(pose=concatenate_poses([r.pose for r in results], trim=False))
 
 
 def _get_models_dir():

@@ -28,6 +28,6 @@ def text_to_gloss(text: str, language: str, ignore_punctuation: bool = False, **
             if token.is_punct:
                 continue
 
-        glosses.append(GlossItem(token.text, token.lemma_))
+        glosses.append(GlossItem(word=token.text, gloss=token.lemma_))
 
     return [glosses]
