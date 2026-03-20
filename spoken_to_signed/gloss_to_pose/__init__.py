@@ -4,7 +4,7 @@ from pose_format import Pose
 
 from ..text_to_gloss.types import Gloss
 from .concatenate import concatenate_poses
-from .lookup import CSVPoseLookup, PoseLookup, PoseResult  # noqa: F401
+from .lookup import CSVPoseLookup, PoseLookup, PoseResult
 
 
 def gloss_to_pose(
