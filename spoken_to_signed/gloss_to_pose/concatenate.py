@@ -26,6 +26,7 @@ def normalize_pose(pose: Pose) -> Pose:
 
 
 def get_signing_boundary(pose: Pose, wrist_index: int, elbow_index: int) -> SigningBoundary:
+    # Ideally, this could use a sign language detection model.
     pose_length = len(pose.body.data)
 
     wrist_exists = pose.body.confidence[:, 0, wrist_index] > 0

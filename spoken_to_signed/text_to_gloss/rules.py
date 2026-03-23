@@ -2,6 +2,7 @@
 # adapted by Mathias Müller
 import re
 import sys
+from collections.abc import Iterator
 
 from .common import load_spacy_model
 from .types import Gloss, GlossItem
@@ -271,7 +272,7 @@ def gloss_de_poss_pronoun(token):
     return pposat_map[token.text[0]] + "-IX"
 
 
-def glossify(tokens):
+def glossify(tokens) -> Iterator[GlossItem]:
     for t in tokens:
         # print_token(t)
 
