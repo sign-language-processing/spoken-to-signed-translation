@@ -8,6 +8,7 @@ from pose_format import Pose
 
 from spoken_to_signed.gloss_to_pose import (
     CSVPoseLookup,
+    PoseResult,
     concatenate_poses,
     gloss_to_pose,
 )
@@ -28,13 +29,13 @@ def _gloss_to_pose(
     spoken_language: str,
     signed_language: str,
     disable_fingerspelling: bool = False,
-) -> Pose:
+) -> PoseResult:
     backup = None if disable_fingerspelling else FingerspellingPoseLookup()
     pose_lookup = CSVPoseLookup(lexicon, backup=backup)
-    poses = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
-    if len(poses) == 1:
-        return poses[0]
-    return concatenate_poses(poses, trim=False)
+    results = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
+    if len(results) == 1:
+        return results[0]
+    return PoseResult(pose=concatenate_poses([r.pose for r in results], trim=False))
 
 
 def _get_models_dir():
@@ -147,12 +148,12 @@ def text_to_gloss_to_pose():
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    pose = _gloss_to_pose(
+    result = _gloss_to_pose(
         sentences, args.lexicon, args.spoken_language, args.signed_language, args.disable_fingerspelling
     )
 
     with open(args.pose, "wb") as f:
-        pose.write(f)
+        result.pose.write(f)
 
     print("Text to gloss to pose")
     print("Input text:", args.text)
@@ -167,10 +168,10 @@ def text_to_gloss_to_pose_to_video():
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
-    pose = _gloss_to_pose(
+    result = _gloss_to_pose(
         sentences, args.lexicon, args.spoken_language, args.signed_language, args.disable_fingerspelling
     )
-    _pose_to_video(pose, args.video)
+    _pose_to_video(result.pose, args.video)
 
     print("Text to gloss to pose to video")
     print("Input text:", args.text)

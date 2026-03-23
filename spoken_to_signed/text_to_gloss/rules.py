@@ -2,9 +2,10 @@
 # adapted by Mathias Müller
 import re
 import sys
+from collections.abc import Iterator
 
 from .common import load_spacy_model
-from .types import Gloss
+from .types import Gloss, GlossItem
 
 LANGUAGE_MODELS_RULES = {
     "de": ("de_core_news_lg", "de_core_news_md", "de_core_news_sm"),
@@ -271,7 +272,7 @@ def gloss_de_poss_pronoun(token):
     return pposat_map[token.text[0]] + "-IX"
 
 
-def glossify(tokens):
+def glossify(tokens) -> Iterator[GlossItem]:
     for t in tokens:
         # print_token(t)
 
@@ -316,10 +317,10 @@ def glossify(tokens):
         # if t.ent_type_ == "LOC" and t.head.pos_ == "ADP":
         #     glosses.append(t.head.text)
 
-        yield (gloss, t.text)
+        yield GlossItem(word=t.text, gloss=gloss)
 
 
-def clause_to_gloss(clause, lang: str, punctuation=False) -> tuple[list[str], list[str]]:
+def clause_to_gloss(clause, lang: str, punctuation=False) -> list[GlossItem]:
     # Rule 1: Extract subject-verb-object triplets and reorder them
     clause = reorder_svo_triplets(clause)
 
@@ -390,9 +391,7 @@ def clause_to_gloss(clause, lang: str, punctuation=False) -> tuple[list[str], li
             tokens[i] = t.head
 
     # Rule 7: Glossify all tokens, i.e. lemmatize most tokens
-    glosses, tokens = zip(*list(glossify(tokens)))
-
-    return glosses, tokens
+    return list(glossify(tokens))
 
 
 def expand_contractions_de(text: str) -> str:
@@ -428,26 +427,26 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = "de", pu
     # reorder clauses
     clauses = reorder_sub_main(clauses)
 
-    glosses_all_clauses = []
-    tokens_all_clauses = []
-
-    # glossify each clause
-    glossed_clauses = []  # type: List[Dict[str, List[str]]]
+    glossed_clauses: list[list[GlossItem]] = []
 
     for clause in clauses:
-        glosses, tokens = clause_to_gloss(clause, lang, punctuation=punctuation)
-        glosses_all_clauses.extend(glosses)
-        tokens_all_clauses.extend(tokens)
-        glossed_clauses.append({"glosses": glosses, "tokens": tokens})
+        items = clause_to_gloss(clause, lang, punctuation=punctuation)
+        glossed_clauses.append(items)
+
+    all_items = [item for clause_items in glossed_clauses for item in clause_items]
 
     # clause separator "|" and end of sentence "||"
-    gloss_string = " | ".join([" ".join(list(clause["glosses"])) for clause in glossed_clauses])
+    gloss_string = " | ".join([" ".join(item.gloss for item in clause_items) for clause_items in glossed_clauses])
     gloss_string += " ||"
 
     # Final Rule: Begin sequence with a capital
     gloss_string = gloss_string.title()
 
-    return {"glosses": glosses_all_clauses, "tokens": tokens_all_clauses, "gloss_string": gloss_string}
+    return {
+        "glosses": [item.gloss for item in all_items],
+        "tokens": [item.word for item in all_items],
+        "gloss_string": gloss_string,
+    }
 
 
 def text_to_gloss(text: str, language: str, punctuation=False, **unused_kwargs) -> list[Gloss]:
@@ -462,4 +461,4 @@ def text_to_gloss(text: str, language: str, punctuation=False, **unused_kwargs) 
     glosses = output_dict["glosses"]
     tokens = output_dict["tokens"]
 
-    return [list(zip(tokens, glosses))]
+    return [[GlossItem(word=t, gloss=g) for t, g in zip(tokens, glosses)]]

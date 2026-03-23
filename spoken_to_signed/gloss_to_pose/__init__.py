@@ -4,8 +4,7 @@ from pose_format import Pose
 
 from ..text_to_gloss.types import Gloss
 from .concatenate import concatenate_poses
-from .lookup import CSVPoseLookup as CSVPoseLookup
-from .lookup import PoseLookup
+from .lookup import CSVPoseLookup, PoseLookup, PoseResult
 
 
 def gloss_to_pose(
@@ -15,11 +14,10 @@ def gloss_to_pose(
     signed_language: str,
     source: str = None,
     anonymize: Union[bool, Pose] = False,
-) -> Pose:
-    # Transform the list of glosses into a list of poses
-    poses = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source)
+) -> PoseResult:
+    results = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source)
+    poses = [r.pose for r in results]
 
-    # Anonymize poses
     if anonymize:
         try:
             from pose_anonymization.appearance import (
@@ -39,5 +37,4 @@ def gloss_to_pose(
             print("Removing appearance...")
             poses = [remove_appearance(pose) for pose in poses]
 
-    # Concatenate the poses to create a single pose
-    return concatenate_poses(poses)
+    return PoseResult(pose=concatenate_poses(poses))

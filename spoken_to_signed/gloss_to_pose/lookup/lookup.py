@@ -2,12 +2,17 @@ import math
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from typing import NamedTuple
 
 from pose_format import Pose
 
 from spoken_to_signed.gloss_to_pose.languages import LANGUAGE_BACKUP
 from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
+
+
+class PoseResult(NamedTuple):
+    pose: Pose
 
 
 class PoseLookup:
@@ -82,7 +87,9 @@ class PoseLookup:
         # Return the highest priority row
         return rows[0]
 
-    def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
+    def lookup(
+        self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None
+    ) -> PoseResult:
         lookup_list = [
             (self.words_index, (spoken_language, signed_language, word)),
             (self.glosses_index, (spoken_language, signed_language, word)),
@@ -95,7 +102,7 @@ class PoseLookup:
                     lower_term = term.lower()
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
-                        return self.get_pose(self.get_best_row(rows, term))
+                        return PoseResult(pose=self.get_pose(self.get_best_row(rows, term)))
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:
@@ -107,7 +114,9 @@ class PoseLookup:
 
         raise FileNotFoundError
 
-    def lookup_sequence(self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None):
+    def lookup_sequence(
+        self, glosses: Gloss, spoken_language: str, signed_language: str, source: str = None
+    ) -> list[PoseResult]:
         def lookup_pair(pair):
             word, gloss = pair
             if word == "":
@@ -120,12 +129,10 @@ class PoseLookup:
                 return None
 
         with ThreadPoolExecutor() as executor:
-            results = executor.map(lookup_pair, glosses)
+            results = [r for r in executor.map(lookup_pair, glosses) if r is not None]
 
-        poses = [result for result in results if result is not None]  # Filter out None results
-
-        if len(poses) == 0:
+        if len(results) == 0:
             gloss_sequence = " ".join([f"{word}/{gloss}" for word, gloss in glosses])
             raise Exception(f"No poses found for {gloss_sequence}")
 
-        return poses
+        return results

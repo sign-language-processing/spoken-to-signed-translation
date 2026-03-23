@@ -3,6 +3,7 @@ from pathlib import Path
 from pose_format import Pose
 
 from .. import CSVPoseLookup, concatenate_poses
+from .lookup import PoseResult
 
 
 class FingerspellingPoseLookup(CSVPoseLookup):
@@ -44,7 +45,9 @@ class FingerspellingPoseLookup(CSVPoseLookup):
         pose.body.fps = fps
         return pose
 
-    def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None) -> Pose:
+    def lookup(
+        self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None
+    ) -> PoseResult:
         if spoken_language not in self.words_index or signed_language not in self.words_index[spoken_language]:
             raise FileNotFoundError(
                 f"Language pair {spoken_language} -> {signed_language} not supported for fingerspelling"
@@ -55,4 +58,4 @@ class FingerspellingPoseLookup(CSVPoseLookup):
         # hold the last letters longer to make it more readable
         poses[-1] = self.stretch_pose(poses[-1], 2)
 
-        return concatenate_poses(poses)
+        return PoseResult(pose=concatenate_poses(poses))

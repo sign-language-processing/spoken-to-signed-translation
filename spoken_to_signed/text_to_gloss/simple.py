@@ -2,7 +2,7 @@ from simplemma import simple_tokenizer
 from simplemma import text_lemmatizer as simple_lemmatizer
 from simplemma.strategies.dictionaries.dictionary_factory import SUPPORTED_LANGUAGES
 
-from .types import Gloss
+from .types import Gloss, GlossItem
 
 
 def text_to_gloss(text: str, language: str, **unused_kwargs) -> list[Gloss]:
@@ -12,4 +12,4 @@ def text_to_gloss(text: str, language: str, **unused_kwargs) -> list[Gloss]:
     else:
         words = lemmas = text.lower().split(" ")
 
-    return [list(zip(words, lemmas))]
+    return [[GlossItem(word=w, gloss=lemma) for w, lemma in zip(words, lemmas)]]
