@@ -29,11 +29,12 @@ def load_signsuisse(directory_path: str, max_retries: int = 5, retry_delay: int 
     # noinspection PyUnresolvedReferences
     import sign_language_datasets.datasets.signsuisse as signsuisse  # noqa: F401
     import tensorflow_datasets as tfds
+    from requests.exceptions import ChunkedEncodingError
+    from requests.exceptions import ConnectionError as RequestsConnectionError
     from sign_language_datasets.datasets.config import SignDatasetConfig
 
     # noinspection PyUnresolvedReferences
     from sign_language_datasets.datasets.signsuisse.signsuisse import _POSE_HEADERS
-    from requests.exceptions import ChunkedEncodingError, ConnectionError as RequestsConnectionError
 
     iana_tags = {
         "ch-de": "sgg",
