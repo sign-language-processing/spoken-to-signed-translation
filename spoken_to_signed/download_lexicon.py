@@ -1,6 +1,7 @@
 import argparse
 import csv
 import os
+import time
 from datetime import datetime
 
 from pose_format import Pose, PoseHeader
@@ -19,7 +20,7 @@ def init_index(index_path: str):
             writer.writerow(LEXICON_INDEX)
 
 
-def load_signsuisse(directory_path: str) -> list[dict[str, str]]:
+def load_signsuisse(directory_path: str, max_retries: int = 5, retry_delay: int = 30) -> list[dict[str, str]]:
     try:
         import sign_language_datasets  # noqa: F401
     except ImportError as e:
@@ -28,6 +29,8 @@ def load_signsuisse(directory_path: str) -> list[dict[str, str]]:
     # noinspection PyUnresolvedReferences
     import sign_language_datasets.datasets.signsuisse as signsuisse  # noqa: F401
     import tensorflow_datasets as tfds
+    from requests.exceptions import ChunkedEncodingError
+    from requests.exceptions import ConnectionError as RequestsConnectionError
     from sign_language_datasets.datasets.config import SignDatasetConfig
 
     # noinspection PyUnresolvedReferences
@@ -42,7 +45,16 @@ def load_signsuisse(directory_path: str) -> list[dict[str, str]]:
     # for cache busting, we use today's date
     date_str = datetime.now().strftime("%Y-%m-%d")
     config = SignDatasetConfig(name=date_str, version="1.0.0", include_video=False, include_pose="holistic")
-    dataset = tfds.load(name="sign_suisse", builder_kwargs={"config": config})
+
+    for attempt in range(max_retries):
+        try:
+            dataset = tfds.load(name="sign_suisse", builder_kwargs={"config": config})
+            break
+        except (ChunkedEncodingError, RequestsConnectionError) as e:
+            if attempt == max_retries - 1:
+                raise
+            print(f"Download attempt {attempt + 1}/{max_retries} failed: {e}. Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
 
     with open(_POSE_HEADERS["holistic"], "rb") as buffer:
         pose_header = PoseHeader.read(BufferReader(buffer.read()))
@@ -90,14 +102,14 @@ def normalize_row(row: dict[str, str]):
                 raise e
 
 
-def get_data(name: str, directory: str):
+def get_data(name: str, directory: str, max_retries: int = 5, retry_delay: int = 30):
     data_loaders = {
         "signsuisse": load_signsuisse,
     }
     if name not in data_loaders:
         raise NotImplementedError(f"{name} is unknown.")
 
-    return data_loaders[name](directory)
+    return data_loaders[name](directory, max_retries=max_retries, retry_delay=retry_delay)
 
 
 def add_data(data: list[dict[str, str]], directory: str):
@@ -118,9 +130,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", choices=["signsuisse"], required=True)
     parser.add_argument("--directory", type=str, required=True)
+    parser.add_argument("--max-retries", type=int, default=5)
+    parser.add_argument("--retry-delay", type=int, default=30)
     args = parser.parse_args()
 
-    data = get_data(args.name, args.directory)
+    data = get_data(args.name, args.directory, max_retries=args.max_retries, retry_delay=args.retry_delay)
     add_data(data, args.directory)
 
 
