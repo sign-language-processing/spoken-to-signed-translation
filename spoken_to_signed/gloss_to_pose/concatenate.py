@@ -81,7 +81,25 @@ def trim_pose(pose, start=True, end=True):
     return pose
 
 
-def concatenate_poses(poses: list[Pose], trim=True) -> Pose:
+def cap_pose_duration(pose: Pose, max_seconds: float) -> Pose:
+    # Citation-form dictionary signs are ~12-15x longer than the same sign in
+    # fluent signing (mostly preparation, holds and retraction), which is the main
+    # reason a naive stitch runs far too long. Speed up any sign longer than
+    # max_seconds to that duration, and leave already-short signs untouched.
+    fps = pose.body.fps
+    num_frames = pose.body.data.shape[0]
+    max_frames = round(max_seconds * fps)
+    if num_frames <= max_frames or num_frames < 2:
+        return pose
+
+    # Resample to max_frames but keep the original fps, so the sign plays back
+    # faster (fewer frames at the same rate) rather than at a lower resolution.
+    body = pose.body.interpolate(new_fps=fps * max_frames / num_frames, kind="linear")
+    body.fps = fps
+    return Pose(header=pose.header, body=body)
+
+
+def concatenate_poses(poses: list[Pose], trim=True, max_sign_seconds: Optional[float] = 0.8) -> Pose:
     if ConcatenationSettings.is_reduce_holistic:
         print("Reducing poses...")
         poses = [reduce_holistic(p) for p in poses]
@@ -93,6 +111,11 @@ def concatenate_poses(poses: list[Pose], trim=True) -> Pose:
     if trim:
         print("Trimming poses...")
         poses = [trim_pose(p, i > 0, i < len(poses) - 1) for i, p in enumerate(poses)]
+
+    # Cap over-long citation forms so the stitched sentence is not far too long
+    if max_sign_seconds is not None:
+        print("Capping sign durations...")
+        poses = [cap_pose_duration(p, max_sign_seconds) for p in poses]
 
     # Concatenate all poses
     print("Smooth concatenating poses...")
