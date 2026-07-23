@@ -1,4 +1,5 @@
 import math
+from functools import partial
 
 import numpy as np
 import scipy.signal
@@ -28,7 +29,7 @@ def smooth_non_face(pose: Pose, filter_trajectory) -> Pose:
 def pose_savgol_filter(pose: Pose) -> Pose:
     # If we want this to be faster, here is a possible solution
     # https://stackoverflow.com/questions/75221888/fast-savgol-filter-on-3d-tensor/75406720#75406720
-    return smooth_non_face(pose, lambda trajectory: scipy.signal.savgol_filter(trajectory, 3, 1))
+    return smooth_non_face(pose, partial(scipy.signal.savgol_filter, window_length=3, polyorder=1))
 
 
 def pose_butterworth_filter(pose: Pose, cutoff: float = 6.0, order: int = 4) -> Pose:
@@ -46,7 +47,7 @@ def pose_butterworth_filter(pose: Pose, cutoff: float = 6.0, order: int = 4) -> 
     if pose.body.data.shape[0] <= 3 * max(len(a), len(b)):
         return pose_savgol_filter(pose)
 
-    return smooth_non_face(pose, lambda trajectory: scipy.signal.filtfilt(b, a, trajectory))
+    return smooth_non_face(pose, partial(scipy.signal.filtfilt, b, a))
 
 
 def create_padding(time: float, example: Pose) -> NumPyPoseBody:
