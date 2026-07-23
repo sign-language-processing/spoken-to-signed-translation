@@ -1,29 +1,49 @@
 import math
+from functools import partial
 
 import numpy as np
 import scipy.signal
 from pose_format import Pose
 from pose_format.numpy import NumPyPoseBody
-from scipy.spatial.distance import cdist
 
 
-def pose_savgol_filter(pose: Pose):
-    # If we want this to be faster, here is a possible solution
-    # https://stackoverflow.com/questions/75221888/fast-savgol-filter-on-3d-tensor/75406720#75406720
-
-    # Smoothing the face does not result in a good result, so we skip it
+def smooth_non_face(pose: Pose, filter_trajectory) -> Pose:
+    # Apply a scipy 1D filter along the time axis to every non-face keypoint, in
+    # place; filter_trajectory is invoked as filter_trajectory(array, axis=0). The
+    # face is skipped on purpose: smoothing it dampens mouthing and other fast
+    # facial expressions that carry meaning, and it has no seam jitter to fix. Its
+    # landmarks form one contiguous block, so we filter the keypoints on either
+    # side of it in two vectorized calls instead of looping over every point.
     [face_component] = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
-    face_range = range(
-        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[0]),
-        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[-1]),
-    )
+    face_start = pose.header.get_point_index("FACE_LANDMARKS", face_component.points[0])
+    face_end = pose.header.get_point_index("FACE_LANDMARKS", face_component.points[-1])
 
-    _, _, points, dims = pose.body.data.shape
-    for p in range(points):
-        if p not in face_range:
-            for d in range(dims):
-                pose.body.data[:, 0, p, d] = scipy.signal.savgol_filter(pose.body.data[:, 0, p, d], 3, 1)
+    data = pose.body.data
+    data[:, 0, :face_start] = filter_trajectory(data[:, 0, :face_start], axis=0)
+    data[:, 0, face_end:] = filter_trajectory(data[:, 0, face_end:], axis=0)
     return pose
+
+
+def pose_savgol_filter(pose: Pose) -> Pose:
+    return smooth_non_face(pose, partial(scipy.signal.savgol_filter, window_length=3, polyorder=1))
+
+
+def pose_butterworth_filter(pose: Pose, cutoff: float = 6.0, order: int = 4) -> Pose:
+    # Low-pass filter each keypoint trajectory over time to remove the jitter and
+    # velocity discontinuities left at the seams between concatenated signs. A
+    # zero-phase Butterworth removes high-frequency noise while preserving the
+    # sign motion, and smooths transitions better than the light Savitzky-Golay
+    # pass (see "Sign Stitching", Walsh et al., BMVC 2024).
+    nyquist = pose.body.fps / 2
+    wn = min(max(cutoff / nyquist, 1e-3), 0.99)
+    b, a = scipy.signal.butter(order, wn, btype="low")
+
+    # filtfilt needs a sequence longer than its edge padding; short clips keep the
+    # existing Savitzky-Golay smoothing.
+    if pose.body.data.shape[0] <= 3 * max(len(a), len(b)):
+        return pose_savgol_filter(pose)
+
+    return smooth_non_face(pose, partial(scipy.signal.filtfilt, b, a))
 
 
 def create_padding(time: float, example: Pose) -> NumPyPoseBody:
@@ -60,19 +80,36 @@ def find_best_connection_point(pose1: Pose, pose2: Pose, window=0.3):
     p1_size = math.ceil(min(window * pose1.body.fps, len(pose1.body.data) * window))
     p2_size = math.ceil(min(window * pose2.body.fps, len(pose2.body.data) * window))
 
-    last_data = pose1.body.data[len(pose1.body.data) - p1_size :]
-    first_data = pose2.body.data[:p2_size]
+    last = np.ma.getdata(pose1.body.data)[len(pose1.body.data) - p1_size :, 0]  # (p1, points, dims)
+    first = np.ma.getdata(pose2.body.data)[:p2_size, 0]  # (p2, points, dims)
+    last_conf = pose1.body.confidence[len(pose1.body.data) - p1_size :, 0]  # (p1, points)
+    first_conf = pose2.body.confidence[:p2_size, 0]  # (p2, points)
 
-    last_vectors = last_data.reshape(len(last_data), -1)
-    first_vectors = first_data.reshape(len(first_data), -1)
+    # The seam is about hand/body continuity, but the face is ~130 of the ~180
+    # keypoints and barely moves between signs, so it would dominate the distance
+    # and drown out the hands. Exclude it from the weighting.
+    keep = np.ones(last.shape[1], dtype=bool)
+    face = next((c for c in pose1.header.components if c.name == "FACE_LANDMARKS"), None)
+    if face is not None:
+        face_start = pose1.header.get_point_index("FACE_LANDMARKS", face.points[0])
+        keep[face_start : face_start + len(face.points)] = False
 
-    distances_matrix = cdist(last_vectors, first_vectors, "euclidean")
-    min_index = np.unravel_index(np.argmin(distances_matrix, axis=None), distances_matrix.shape)
+    # Confidence-weighted distance between every (last, first) frame pair: a keypoint
+    # counts only where it is detected in BOTH frames (weight = product of the two
+    # confidences), so undetected keypoints -- whose coordinates are arbitrary -- do
+    # not decide the seam. Normalize by the total weight so a pair isn't rewarded for
+    # simply having fewer detected keypoints, and skip pairs that share none.
+    squared = ((last[:, None] - first[None, :]) ** 2).sum(-1)  # (p1, p2, points)
+    weight = last_conf[:, None] * first_conf[None, :] * keep  # (p1, p2, points), face excluded
+    total = weight.sum(-1)  # (p1, p2)
+    distances = np.where(total > 0, np.sqrt((weight * squared).sum(-1) / np.maximum(total, 1e-8)), np.inf)
+
+    min_index = np.unravel_index(np.argmin(distances), distances.shape)
     last_index = len(pose1.body.data) - p1_size + min_index[0]
     return last_index, min_index[1]
 
 
-def smooth_concatenate_poses(poses: list[Pose], padding=0.20) -> Pose:
+def smooth_concatenate_poses(poses: list[Pose], padding=0.07) -> Pose:
     if len(poses) == 0:
         raise ValueError("No poses to smooth")
 
@@ -95,4 +132,4 @@ def smooth_concatenate_poses(poses: list[Pose], padding=0.20) -> Pose:
     print("Concatenating...")
     single_pose = concatenate_poses(poses, padding_pose)
     print("Smoothing...")
-    return pose_savgol_filter(single_pose)
+    return pose_butterworth_filter(single_pose)

@@ -79,6 +79,13 @@ text_to_gloss_to_pose \
   --pose <output_pose_file_path>.pose
 ```
 
+Words missing from the lexicon are fingerspelled letter-by-letter by default;
+pass `--disable-fingerspelling` to skip them instead.
+
+Add `--coverage-info` to print how each token was matched, color-coded in the terminal
+(green: lexicon, yellow: language backup, orange: fingerspelling, red: unmatched),
+or `--coverage-stats <file.json>` to save the same per-token information as JSON.
+
 #### Text-to-Gloss-to-Pose-to-Video Translation
 
 This script translates input text into gloss notation, converts the glosses into a pose file, and then transforms the pose file into a video.
