@@ -17,6 +17,7 @@ def gloss_to_pose(
 ) -> PoseResult:
     results = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source)
     poses = [r.pose for r in results]
+    signing_spans = [r.signing_span for r in results]
 
     if anonymize:
         try:
@@ -37,4 +38,4 @@ def gloss_to_pose(
             print("Removing appearance...")
             poses = [remove_appearance(pose) for pose in poses]
 
-    return PoseResult(pose=concatenate_poses(poses))
+    return PoseResult(pose=concatenate_poses(poses, signing_spans=signing_spans))

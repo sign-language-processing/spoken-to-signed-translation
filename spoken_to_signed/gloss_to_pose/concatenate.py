@@ -110,13 +110,20 @@ def join_poses(poses: list[Pose]) -> Pose:
     return Pose(header=poses[0].header, body=body)
 
 
-def process_sign(pose: Pose, keep_onset: bool, keep_offset: bool, max_sign_seconds: Optional[float]) -> Pose:
+def process_sign(
+    pose: Pose,
+    keep_onset: bool,
+    keep_offset: bool,
+    max_sign_seconds: Optional[float],
+    span: Optional[tuple[int, int]] = None,
+) -> Pose:
     # Trim a sign to its active signing span and, if it runs too long, speed it up.
-    # The sentence's onset (raising the hands into signing space, on the first sign)
-    # and offset (lowering them, on the last sign) are natural rest<->signing
-    # transitions: keep those at normal speed and re-attach them, so only the sign
-    # itself is compressed.
-    first, last = active_signing_span(pose)
+    # The span is a precomputed (segmentation) active-signing range when available,
+    # else the elbow heuristic. The sentence's onset (raising the hands into
+    # signing space, on the first sign) and offset (lowering them, on the last
+    # sign) are natural rest<->signing transitions: keep those at normal speed and
+    # re-attach them, so only the sign itself is compressed.
+    first, last = span if span is not None else active_signing_span(pose)
     num_frames = len(pose.body)
     onset = slice_pose(pose, 0, first) if keep_onset and first > 0 else None
     offset = slice_pose(pose, last, num_frames) if keep_offset and last < num_frames else None
@@ -168,7 +175,11 @@ def hide_lowered_hands(pose: Pose, threshold: float = 0.15, min_show_seconds: fl
 
 
 def concatenate_poses(
-    poses: list[Pose], trim=True, max_sign_seconds: Optional[float] = 0.8, hide_idle_hands: bool = True
+    poses: list[Pose],
+    trim=True,
+    max_sign_seconds: Optional[float] = 0.8,
+    hide_idle_hands: bool = True,
+    signing_spans: Optional[list[Optional[tuple[int, int]]]] = None,
 ) -> Pose:
     if ConcatenationSettings.is_reduce_holistic:
         print("Reducing poses...")
@@ -180,8 +191,11 @@ def concatenate_poses(
     if trim:
         print("Trimming poses...")
         last = len(poses) - 1
+        spans = signing_spans if signing_spans is not None else [None] * len(poses)
         poses = [
-            process_sign(pose, keep_onset=i == 0, keep_offset=i == last, max_sign_seconds=max_sign_seconds)
+            process_sign(
+                pose, keep_onset=i == 0, keep_offset=i == last, max_sign_seconds=max_sign_seconds, span=spans[i]
+            )
             for i, pose in enumerate(poses)
         ]
     elif max_sign_seconds is not None:
