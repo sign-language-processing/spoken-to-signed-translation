@@ -2,6 +2,7 @@ from typing import NamedTuple, Optional
 
 import numpy as np
 from pose_format import Pose
+from pose_format.numpy import NumPyPoseBody
 from pose_format.utils.generic import (
     correct_wrists,
     normalize_pose_size,
@@ -48,15 +49,12 @@ def get_signing_boundary(pose: Pose, wrist_index: int, elbow_index: int) -> Sign
     )
 
 
-def trim_pose(pose, start=True, end=True):
-    if len(pose.body.data) == 0:
-        raise ValueError("Cannot trim an empty pose")
-
+def active_signing_span(pose: Pose) -> tuple[int, int]:
+    # The [first, last) frame range in which either hand is raised and signing.
+    # Falls back to the whole clip when no signing is detected.
     first_frames = []
     last_frames = []
-
-    hands = ["LEFT", "RIGHT"]
-    for hand in hands:
+    for hand in ("LEFT", "RIGHT"):
         wrist_index = pose.header._get_point_index("POSE_LANDMARKS", f"{hand}_WRIST")
         elbow_index = pose.header._get_point_index("POSE_LANDMARKS", f"{hand}_ELBOW")
         boundary_start, boundary_end = get_signing_boundary(pose, wrist_index, elbow_index)
@@ -66,11 +64,15 @@ def trim_pose(pose, start=True, end=True):
             last_frames.append(boundary_end)
 
     if len(first_frames) == 0:
-        return pose
+        return 0, len(pose.body.data)
+    return min(first_frames), max(last_frames)
 
-    first_frame = min(first_frames)
-    last_frame = max(last_frames)
 
+def trim_pose(pose, start=True, end=True):
+    if len(pose.body.data) == 0:
+        raise ValueError("Cannot trim an empty pose")
+
+    first_frame, last_frame = active_signing_span(pose)
     if not start:
         first_frame = 0
     if not end:
@@ -99,6 +101,23 @@ def cap_pose_duration(pose: Pose, max_seconds: float) -> Pose:
     return Pose(header=pose.header, body=body)
 
 
+def slice_pose(pose: Pose, start: int, end: int) -> Pose:
+    body = NumPyPoseBody(
+        fps=pose.body.fps,
+        data=pose.body.data[start:end].copy(),
+        confidence=pose.body.confidence[start:end].copy(),
+    )
+    return Pose(header=pose.header, body=body)
+
+
+def join_poses(poses: list[Pose]) -> Pose:
+    # Concatenate poses frame-wise, with no transition padding, keeping masks.
+    data = np.ma.concatenate([p.body.data for p in poses])
+    confidence = np.concatenate([p.body.confidence for p in poses])
+    body = NumPyPoseBody(fps=poses[0].body.fps, data=data, confidence=confidence)
+    return Pose(header=poses[0].header, body=body)
+
+
 def concatenate_poses(poses: list[Pose], trim=True, max_sign_seconds: Optional[float] = 0.8) -> Pose:
     if ConcatenationSettings.is_reduce_holistic:
         print("Reducing poses...")
@@ -107,13 +126,33 @@ def concatenate_poses(poses: list[Pose], trim=True, max_sign_seconds: Optional[f
     print("Normalizing poses...")
     poses = [normalize_pose(p) for p in poses]
 
-    # Trim the poses to only include the parts where the hands are visible
     if trim:
         print("Trimming poses...")
-        poses = [trim_pose(p, i > 0, i < len(poses) - 1) for i, p in enumerate(poses)]
+        # The sentence's onset (raising the hands into signing space) and offset
+        # (lowering them again) are natural rest<->signing transitions we keep at
+        # normal speed. Cut those two motions off the first and last signs, trim
+        # every sign to its active signing, speed up the over-long ones, then
+        # re-attach the onset and offset so only the signs are compressed.
+        lead_in_end = active_signing_span(poses[0])[0]
+        retraction_start = active_signing_span(poses[-1])[1]
+        lead_in = slice_pose(poses[0], 0, lead_in_end) if lead_in_end > 0 else None
+        retraction = (
+            slice_pose(poses[-1], retraction_start, len(poses[-1].body.data))
+            if retraction_start < len(poses[-1].body.data)
+            else None
+        )
 
-    # Cap over-long citation forms so the stitched sentence is not far too long
-    if max_sign_seconds is not None:
+        poses = [trim_pose(p) for p in poses]
+
+        if max_sign_seconds is not None:
+            print("Capping sign durations...")
+            poses = [cap_pose_duration(p, max_sign_seconds) for p in poses]
+
+        if lead_in is not None:
+            poses[0] = join_poses([lead_in, poses[0]])
+        if retraction is not None:
+            poses[-1] = join_poses([poses[-1], retraction])
+    elif max_sign_seconds is not None:
         print("Capping sign durations...")
         poses = [cap_pose_duration(p, max_sign_seconds) for p in poses]
 
