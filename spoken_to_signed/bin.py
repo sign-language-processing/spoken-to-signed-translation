@@ -1,5 +1,6 @@
 import argparse
 import importlib
+import json
 import os
 import tempfile
 from itertools import chain
@@ -7,8 +8,10 @@ from itertools import chain
 from pose_format import Pose
 
 from spoken_to_signed.gloss_to_pose import (
+    CoverageType,
     CSVPoseLookup,
     PoseResult,
+    TokenCoverage,
     concatenate_poses,
     gloss_to_pose,
 )
@@ -29,13 +32,17 @@ def _gloss_to_pose(
     spoken_language: str,
     signed_language: str,
     disable_fingerspelling: bool = False,
-) -> PoseResult:
+) -> tuple[PoseResult, list[list[TokenCoverage]]]:
     backup = None if disable_fingerspelling else FingerspellingPoseLookup()
     pose_lookup = CSVPoseLookup(lexicon, backup=backup)
-    results = [gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language) for gloss in sentences]
+    results = []
+    coverage = []
+    for gloss in sentences:
+        results.append(gloss_to_pose(gloss, pose_lookup, spoken_language, signed_language))
+        coverage.append(pose_lookup.last_coverage)
     if len(results) == 1:
-        return results[0]
-    return PoseResult(pose=concatenate_poses([r.pose for r in results], trim=False))
+        return results[0], coverage
+    return PoseResult(pose=concatenate_poses([r.pose for r in results], trim=False)), coverage
 
 
 def _get_models_dir():
@@ -140,15 +147,49 @@ def pose_to_video():
     print("Output video:", args.video)
 
 
+_COVERAGE_COLORS = {
+    CoverageType.LEXICON: "\033[92m",  # green
+    CoverageType.LANGUAGE_BACKUP: "\033[93m",  # yellow
+    CoverageType.FINGERSPELLING_BACKUP: "\033[38;5;214m",  # orange
+    CoverageType.UNMATCHED: "\033[91m",  # red
+}
+
+
+def _print_coverage(coverage: list[list[TokenCoverage]]):
+    legend = " ".join(f"{color}{coverage_type.value}\033[0m" for coverage_type, color in _COVERAGE_COLORS.items())
+    print("Legend:", legend)
+    for tokens in coverage:
+        print("Gloss:", " ".join(f"{_COVERAGE_COLORS[t.coverage]}{t.gloss}\033[0m" for t in tokens))
+    tokens = [t for sentence in coverage for t in sentence]
+    matched = sum(t.coverage != CoverageType.UNMATCHED for t in tokens)
+    print(f"Coverage: {matched / len(tokens):.3f} ({matched}/{len(tokens)} tokens matched)")
+
+
+def _save_coverage_stats(coverage: list[list[TokenCoverage]], path: str):
+    tokens = [t for sentence in coverage for t in sentence]
+    matched = sum(t.coverage != CoverageType.UNMATCHED for t in tokens)
+    data = {
+        "total_tokens": len(tokens),
+        "matched_tokens": matched,
+        "coverage": matched / len(tokens) if tokens else 0.0,
+        "sentences": [[t._asdict() for t in sentence] for sentence in coverage],
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    print("Coverage stats saved to:", path)
+
+
 def text_to_gloss_to_pose():
     args_parser = argparse.ArgumentParser()
     _text_input_arguments(args_parser)
     _lexicon_input_arguments(args_parser)
     args_parser.add_argument("--pose", type=str, required=True)
+    args_parser.add_argument("--coverage-info", action="store_true", help="Print per-token lexicon coverage")
+    args_parser.add_argument("--coverage-stats", type=str, help="Save per-token lexicon coverage to a JSON file")
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
-    result = _gloss_to_pose(
+    result, coverage = _gloss_to_pose(
         sentences, args.lexicon, args.spoken_language, args.signed_language, args.disable_fingerspelling
     )
 
@@ -159,6 +200,11 @@ def text_to_gloss_to_pose():
     print("Input text:", args.text)
     print("Output pose:", args.pose)
 
+    if args.coverage_info:
+        _print_coverage(coverage)
+    if args.coverage_stats:
+        _save_coverage_stats(coverage, args.coverage_stats)
+
 
 def text_to_gloss_to_pose_to_video():
     args_parser = argparse.ArgumentParser()
@@ -168,7 +214,7 @@ def text_to_gloss_to_pose_to_video():
     args = args_parser.parse_args()
 
     sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
-    result = _gloss_to_pose(
+    result, _ = _gloss_to_pose(
         sentences, args.lexicon, args.spoken_language, args.signed_language, args.disable_fingerspelling
     )
     _pose_to_video(result.pose, args.video)

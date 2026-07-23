@@ -3,7 +3,7 @@ from pathlib import Path
 from pose_format import Pose
 
 from .. import CSVPoseLookup, concatenate_poses
-from .lookup import PoseResult
+from .lookup import CoverageType, PoseResult
 
 
 class FingerspellingPoseLookup(CSVPoseLookup):
@@ -59,4 +59,4 @@ class FingerspellingPoseLookup(CSVPoseLookup):
         # hold the last letters longer to make it more readable
         poses[-1] = self.stretch_pose(poses[-1], 2)
 
-        return PoseResult(pose=concatenate_poses(poses))
+        return PoseResult(pose=concatenate_poses(poses), coverage=CoverageType.FINGERSPELLING_BACKUP)
