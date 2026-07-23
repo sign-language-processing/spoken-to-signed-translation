@@ -9,26 +9,23 @@ from scipy.spatial.distance import cdist
 
 
 def smooth_non_face(pose: Pose, filter_trajectory) -> Pose:
-    # Apply a 1D temporal filter to every non-face keypoint trajectory, in place.
-    # The face is skipped on purpose: smoothing it dampens mouthing and other fast
-    # facial expressions that carry meaning, and the face has no seam jitter to fix.
+    # Apply a scipy 1D filter along the time axis to every non-face keypoint, in
+    # place; filter_trajectory is invoked as filter_trajectory(array, axis=0). The
+    # face is skipped on purpose: smoothing it dampens mouthing and other fast
+    # facial expressions that carry meaning, and it has no seam jitter to fix. Its
+    # landmarks form one contiguous block, so we filter the keypoints on either
+    # side of it in two vectorized calls instead of looping over every point.
     [face_component] = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
-    face_range = range(
-        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[0]),
-        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[-1]),
-    )
+    face_start = pose.header.get_point_index("FACE_LANDMARKS", face_component.points[0])
+    face_end = pose.header.get_point_index("FACE_LANDMARKS", face_component.points[-1])
 
-    _, _, points, dims = pose.body.data.shape
-    for p in range(points):
-        if p not in face_range:
-            for d in range(dims):
-                pose.body.data[:, 0, p, d] = filter_trajectory(pose.body.data[:, 0, p, d])
+    data = pose.body.data
+    data[:, 0, :face_start] = filter_trajectory(data[:, 0, :face_start], axis=0)
+    data[:, 0, face_end:] = filter_trajectory(data[:, 0, face_end:], axis=0)
     return pose
 
 
 def pose_savgol_filter(pose: Pose) -> Pose:
-    # If we want this to be faster, here is a possible solution
-    # https://stackoverflow.com/questions/75221888/fast-savgol-filter-on-3d-tensor/75406720#75406720
     return smooth_non_face(pose, partial(scipy.signal.savgol_filter, window_length=3, polyorder=1))
 
 
