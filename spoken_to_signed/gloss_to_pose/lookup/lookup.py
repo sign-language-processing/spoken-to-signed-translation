@@ -2,6 +2,7 @@ import math
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
 from typing import NamedTuple, Optional
 
 from pose_format import Pose
@@ -11,11 +12,28 @@ from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
 
 
+class CoverageType(str, Enum):
+    # str subclass so values serialize to JSON as-is
+    LEXICON = "lexicon"
+    LANGUAGE_BACKUP = "language_backup"
+    FINGERSPELLING_BACKUP = "fingerspelling_backup"
+    UNMATCHED = "unmatched"
+
+
+class TokenCoverage(NamedTuple):
+    word: str
+    gloss: str
+    coverage: CoverageType
+
+
 class PoseResult(NamedTuple):
     pose: Pose
     # Active-signing frame range within the pose, if known (e.g. from a precomputed
     # segmentation). None means "unknown -- fall back to the elbow heuristic".
     signing_span: Optional[tuple[int, int]] = None
+    # How the lookup resolved; None for results that did not come from a lookup
+    # (e.g. concatenated poses).
+    coverage: Optional[CoverageType] = None
 
 
 class PoseLookup:
@@ -29,6 +47,9 @@ class PoseLookup:
 
         self.file_systems = {}
         self.cache = cache if cache is not None else LRUCache()
+
+        # Per-token coverage of the most recent lookup_sequence call
+        self.last_coverage: list[TokenCoverage] = []
 
     def make_dictionary_index(self, rows: list, based_on: str):
         # As an attempt to make the index more compact in memory, we store a dictionary with only what we need
@@ -120,11 +141,14 @@ class PoseLookup:
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
                         pose, signing_span = self.get_pose(self.get_best_row(rows, term))
-                        return PoseResult(pose=pose, signing_span=signing_span)
+                        return PoseResult(pose=pose, signing_span=signing_span, coverage=CoverageType.LEXICON)
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:
-            return self.lookup(word, gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source)
+            result = self.lookup(word, gloss, spoken_language, LANGUAGE_BACKUP[signed_language], source)
+            if result.coverage == CoverageType.LEXICON:
+                result = result._replace(coverage=CoverageType.LANGUAGE_BACKUP)
+            return result
 
         # Backup strategy: revert to fingerspelling
         if self.backup is not None:
@@ -147,7 +171,16 @@ class PoseLookup:
                 return None
 
         with ThreadPoolExecutor() as executor:
-            results = [r for r in executor.map(lookup_pair, glosses) if r is not None]
+            all_results = list(executor.map(lookup_pair, glosses))
+
+        # Record how each token resolved, for optional coverage reporting
+        self.last_coverage = [
+            TokenCoverage(word, gloss, result.coverage if result is not None else CoverageType.UNMATCHED)
+            for (word, gloss), result in zip(glosses, all_results)
+            if word != ""
+        ]
+
+        results = [r for r in all_results if r is not None]
 
         if len(results) == 0:
             gloss_sequence = " ".join([f"{word}/{gloss}" for word, gloss in glosses])

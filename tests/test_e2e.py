@@ -1,3 +1,4 @@
+import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -67,3 +68,29 @@ def test_no_fingerspelling_fails_for_unknown_word():
     with tempfile.TemporaryDirectory() as tmp_dir:
         result, _ = _run_text_to_gloss_to_pose(tmp_dir, "abcd", ["--disable-fingerspelling"])
         assert result.returncode != 0, "Should fail without fingerspelling for unknown word"
+
+
+def test_coverage_info_prints_summary():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        result, _ = _run_text_to_gloss_to_pose(tmp_dir, "Kleine Kinder essen Pizza in Zürich.", ["--coverage-info"])
+        assert result.returncode == 0, f"Command failed: {result.stderr}"
+        assert "Coverage:" in result.stdout, "Coverage summary not printed"
+
+
+def test_coverage_stats_saves_json():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        stats_path = Path(tmp_dir) / "coverage.json"
+        result, _ = _run_text_to_gloss_to_pose(
+            tmp_dir, "Kleine Kinder essen Pizza in Zürich.", ["--coverage-stats", str(stats_path)]
+        )
+        assert result.returncode == 0, f"Command failed: {result.stderr}"
+        assert stats_path.exists(), "Coverage stats file was not created"
+
+        with open(stats_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        assert data["total_tokens"] > 0
+        assert 0.0 <= data["coverage"] <= 1.0
+        assert len(data["sentences"]) == 1
+        token = data["sentences"][0][0]
+        assert set(token.keys()) == {"word", "gloss", "coverage"}
