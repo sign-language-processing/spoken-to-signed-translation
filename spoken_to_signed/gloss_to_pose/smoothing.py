@@ -30,7 +30,7 @@ def pose_butterworth_filter(pose: Pose, cutoff: float = 6.0, order: int = 4):
     # Low-pass filter each keypoint trajectory over time to remove the jitter and
     # velocity discontinuities left at the seams between concatenated signs. A
     # zero-phase Butterworth removes high-frequency noise while preserving the
-    # sign motion, and smooths transitions far better than the light Savitzky-Golay
+    # sign motion, and smooths transitions better than the light Savitzky-Golay
     # pass (see "Sign Stitching", Walsh et al., BMVC 2024). The face is left alone.
     n = pose.body.data.shape[0]
     nyquist = pose.body.fps / 2
