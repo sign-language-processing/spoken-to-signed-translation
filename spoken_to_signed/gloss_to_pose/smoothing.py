@@ -7,11 +7,10 @@ from pose_format.numpy import NumPyPoseBody
 from scipy.spatial.distance import cdist
 
 
-def pose_savgol_filter(pose: Pose):
-    # If we want this to be faster, here is a possible solution
-    # https://stackoverflow.com/questions/75221888/fast-savgol-filter-on-3d-tensor/75406720#75406720
-
-    # Smoothing the face does not result in a good result, so we skip it
+def smooth_non_face(pose: Pose, filter_trajectory) -> Pose:
+    # Apply a 1D temporal filter to every non-face keypoint trajectory, in place.
+    # The face is skipped on purpose: smoothing it dampens mouthing and other fast
+    # facial expressions that carry meaning, and the face has no seam jitter to fix.
     [face_component] = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
     face_range = range(
         pose.header._get_point_index("FACE_LANDMARKS", face_component.points[0]),
@@ -22,38 +21,32 @@ def pose_savgol_filter(pose: Pose):
     for p in range(points):
         if p not in face_range:
             for d in range(dims):
-                pose.body.data[:, 0, p, d] = scipy.signal.savgol_filter(pose.body.data[:, 0, p, d], 3, 1)
+                pose.body.data[:, 0, p, d] = filter_trajectory(pose.body.data[:, 0, p, d])
     return pose
 
 
-def pose_butterworth_filter(pose: Pose, cutoff: float = 6.0, order: int = 4):
+def pose_savgol_filter(pose: Pose) -> Pose:
+    # If we want this to be faster, here is a possible solution
+    # https://stackoverflow.com/questions/75221888/fast-savgol-filter-on-3d-tensor/75406720#75406720
+    return smooth_non_face(pose, lambda trajectory: scipy.signal.savgol_filter(trajectory, 3, 1))
+
+
+def pose_butterworth_filter(pose: Pose, cutoff: float = 6.0, order: int = 4) -> Pose:
     # Low-pass filter each keypoint trajectory over time to remove the jitter and
     # velocity discontinuities left at the seams between concatenated signs. A
     # zero-phase Butterworth removes high-frequency noise while preserving the
     # sign motion, and smooths transitions better than the light Savitzky-Golay
-    # pass (see "Sign Stitching", Walsh et al., BMVC 2024). The face is left alone.
-    n = pose.body.data.shape[0]
+    # pass (see "Sign Stitching", Walsh et al., BMVC 2024).
     nyquist = pose.body.fps / 2
     wn = min(max(cutoff / nyquist, 1e-3), 0.99)
     b, a = scipy.signal.butter(order, wn, btype="low")
 
     # filtfilt needs a sequence longer than its edge padding; short clips keep the
     # existing Savitzky-Golay smoothing.
-    if n <= 3 * max(len(a), len(b)):
+    if pose.body.data.shape[0] <= 3 * max(len(a), len(b)):
         return pose_savgol_filter(pose)
 
-    [face_component] = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
-    face_range = range(
-        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[0]),
-        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[-1]),
-    )
-
-    _, _, points, dims = pose.body.data.shape
-    for p in range(points):
-        if p not in face_range:
-            for d in range(dims):
-                pose.body.data[:, 0, p, d] = scipy.signal.filtfilt(b, a, pose.body.data[:, 0, p, d])
-    return pose
+    return smooth_non_face(pose, lambda trajectory: scipy.signal.filtfilt(b, a, trajectory))
 
 
 def create_padding(time: float, example: Pose) -> NumPyPoseBody:
