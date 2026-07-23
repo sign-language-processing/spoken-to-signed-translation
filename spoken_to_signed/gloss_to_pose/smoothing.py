@@ -85,13 +85,22 @@ def find_best_connection_point(pose1: Pose, pose2: Pose, window=0.3):
     last_conf = pose1.body.confidence[len(pose1.body.data) - p1_size :, 0]  # (p1, points)
     first_conf = pose2.body.confidence[:p2_size, 0]  # (p2, points)
 
+    # The seam is about hand/body continuity, but the face is ~130 of the ~180
+    # keypoints and barely moves between signs, so it would dominate the distance
+    # and drown out the hands. Exclude it from the weighting.
+    keep = np.ones(last.shape[1], dtype=bool)
+    face = next((c for c in pose1.header.components if c.name == "FACE_LANDMARKS"), None)
+    if face is not None:
+        face_start = pose1.header.get_point_index("FACE_LANDMARKS", face.points[0])
+        keep[face_start : face_start + len(face.points)] = False
+
     # Confidence-weighted distance between every (last, first) frame pair: a keypoint
     # counts only where it is detected in BOTH frames (weight = product of the two
     # confidences), so undetected keypoints -- whose coordinates are arbitrary -- do
     # not decide the seam. Normalize by the total weight so a pair isn't rewarded for
     # simply having fewer detected keypoints, and skip pairs that share none.
     squared = ((last[:, None] - first[None, :]) ** 2).sum(-1)  # (p1, p2, points)
-    weight = last_conf[:, None] * first_conf[None, :]  # (p1, p2, points)
+    weight = last_conf[:, None] * first_conf[None, :] * keep  # (p1, p2, points), face excluded
     total = weight.sum(-1)  # (p1, p2)
     distances = np.where(total > 0, np.sqrt((weight * squared).sum(-1) / np.maximum(total, 1e-8)), np.inf)
 

@@ -41,3 +41,30 @@ def test_seam_ignores_zero_confidence_keypoints():
     benign = find_best_connection_point(*_halves(pose, zero_first_n=10, fill=0.0))
     garbage = find_best_connection_point(*_halves(pose, zero_first_n=10, fill=1e6))
     assert benign == garbage
+
+
+def _halves_face_filled(pose, fill):
+    # Split into halves, overwriting the FACE keypoints' coordinates (confidence
+    # left intact, so they are "detected") with `fill`.
+    face = next(c for c in pose.header.components if c.name == "FACE_LANDMARKS")
+    start = pose.header.get_point_index("FACE_LANDMARKS", face.points[0])
+    end = start + len(face.points)
+    n = len(pose.body.data)
+    mid = n // 2
+
+    def half(lo, hi):
+        data = pose.body.data[lo:hi].copy()
+        conf = pose.body.confidence[lo:hi].copy()
+        data[:, 0, start:end, :] = fill
+        return Pose(pose.header, NumPyPoseBody(pose.body.fps, data, conf))
+
+    return half(0, mid), half(mid, n)
+
+
+def test_seam_ignores_face_keypoints():
+    # The face is excluded from the seam, so even detected (confident) face
+    # keypoints with wildly different coordinates must not change the connection.
+    pose = Pose.read((LEXICON / "sgg" / "essen.pose").read_bytes())
+    benign = find_best_connection_point(*_halves_face_filled(pose, 0.0))
+    garbage = find_best_connection_point(*_halves_face_filled(pose, 1e6))
+    assert benign == garbage
