@@ -1,4 +1,5 @@
 import math
+from functools import partial
 
 import numpy as np
 import scipy.signal
@@ -7,23 +8,43 @@ from pose_format.numpy import NumPyPoseBody
 from scipy.spatial.distance import cdist
 
 
-def pose_savgol_filter(pose: Pose):
-    # If we want this to be faster, here is a possible solution
-    # https://stackoverflow.com/questions/75221888/fast-savgol-filter-on-3d-tensor/75406720#75406720
-
-    # Smoothing the face does not result in a good result, so we skip it
+def smooth_non_face(pose: Pose, filter_trajectory) -> Pose:
+    # Apply a scipy 1D filter along the time axis to every non-face keypoint, in
+    # place; filter_trajectory is invoked as filter_trajectory(array, axis=0). The
+    # face is skipped on purpose: smoothing it dampens mouthing and other fast
+    # facial expressions that carry meaning, and it has no seam jitter to fix. Its
+    # landmarks form one contiguous block, so we filter the keypoints on either
+    # side of it in two vectorized calls instead of looping over every point.
     [face_component] = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
-    face_range = range(
-        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[0]),
-        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[-1]),
-    )
+    face_start = pose.header.get_point_index("FACE_LANDMARKS", face_component.points[0])
+    face_end = pose.header.get_point_index("FACE_LANDMARKS", face_component.points[-1])
 
-    _, _, points, dims = pose.body.data.shape
-    for p in range(points):
-        if p not in face_range:
-            for d in range(dims):
-                pose.body.data[:, 0, p, d] = scipy.signal.savgol_filter(pose.body.data[:, 0, p, d], 3, 1)
+    data = pose.body.data
+    data[:, 0, :face_start] = filter_trajectory(data[:, 0, :face_start], axis=0)
+    data[:, 0, face_end:] = filter_trajectory(data[:, 0, face_end:], axis=0)
     return pose
+
+
+def pose_savgol_filter(pose: Pose) -> Pose:
+    return smooth_non_face(pose, partial(scipy.signal.savgol_filter, window_length=3, polyorder=1))
+
+
+def pose_butterworth_filter(pose: Pose, cutoff: float = 6.0, order: int = 4) -> Pose:
+    # Low-pass filter each keypoint trajectory over time to remove the jitter and
+    # velocity discontinuities left at the seams between concatenated signs. A
+    # zero-phase Butterworth removes high-frequency noise while preserving the
+    # sign motion, and smooths transitions better than the light Savitzky-Golay
+    # pass (see "Sign Stitching", Walsh et al., BMVC 2024).
+    nyquist = pose.body.fps / 2
+    wn = min(max(cutoff / nyquist, 1e-3), 0.99)
+    b, a = scipy.signal.butter(order, wn, btype="low")
+
+    # filtfilt needs a sequence longer than its edge padding; short clips keep the
+    # existing Savitzky-Golay smoothing.
+    if pose.body.data.shape[0] <= 3 * max(len(a), len(b)):
+        return pose_savgol_filter(pose)
+
+    return smooth_non_face(pose, partial(scipy.signal.filtfilt, b, a))
 
 
 def create_padding(time: float, example: Pose) -> NumPyPoseBody:
@@ -95,4 +116,4 @@ def smooth_concatenate_poses(poses: list[Pose], padding=0.20) -> Pose:
     print("Concatenating...")
     single_pose = concatenate_poses(poses, padding_pose)
     print("Smoothing...")
-    return pose_savgol_filter(single_pose)
+    return pose_butterworth_filter(single_pose)
