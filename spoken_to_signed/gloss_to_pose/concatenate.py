@@ -134,8 +134,8 @@ def _drop_short_spans(flags: np.ndarray, min_len: int) -> np.ndarray:
         return flags
     flags = flags.copy()
     padded = np.concatenate(([False], flags, [False]))
-    edges = np.flatnonzero(np.diff(padded.astype(np.int8)))
-    for start, end in zip(edges[0::2], edges[1::2]):
+    edges = np.flatnonzero(padded[1:] != padded[:-1])  # alternating run starts/ends
+    for start, end in edges.reshape(-1, 2):
         if end - start < min_len:
             flags[start:end] = False
     return flags
@@ -148,8 +148,8 @@ def hide_lowered_hands(pose: Pose, threshold: float = 0.15, min_show_seconds: fl
     # only where confidence > 0 -- so the hand follows the real arm while signing
     # and disappears at rest. Height runs from the hip (0) to the shoulder (1);
     # brief appearances (a resting arm that momentarily crept up) are hidden too.
-    data = np.ma.getdata(pose.body.data)
-    min_show = round(min_show_seconds * pose.body.fps)
+    y = np.ma.getdata(pose.body.data)[:, 0, :, 1]  # vertical position of every keypoint
+    min_show_frames = round(min_show_seconds * pose.body.fps)
     for hand in ("LEFT", "RIGHT"):
         component = next((c for c in pose.header.components if c.name == f"{hand}_HAND_LANDMARKS"), None)
         if component is None:
@@ -157,11 +157,11 @@ def hide_lowered_hands(pose: Pose, threshold: float = 0.15, min_show_seconds: fl
         wrist = pose.header.get_point_index("POSE_LANDMARKS", f"{hand}_WRIST")
         shoulder = pose.header.get_point_index("POSE_LANDMARKS", f"{hand}_SHOULDER")
         hip = pose.header.get_point_index("POSE_LANDMARKS", f"{hand}_HIP")
-        torso = np.median(data[:, 0, hip, 1] - data[:, 0, shoulder, 1])
-        if not torso:
+        torso = np.median(y[:, hip] - y[:, shoulder])
+        if torso == 0:
             continue
-        rel_height = (data[:, 0, hip, 1] - data[:, 0, wrist, 1]) / abs(torso)
-        shown = _drop_short_spans(rel_height >= threshold, min_show)
+        rel_height = (y[:, hip] - y[:, wrist]) / abs(torso)
+        shown = _drop_short_spans(rel_height >= threshold, min_show_frames)
         start = pose.header.get_point_index(f"{hand}_HAND_LANDMARKS", component.points[0])
         pose.body.confidence[~shown, 0, start : start + len(component.points)] = 0
     return pose
