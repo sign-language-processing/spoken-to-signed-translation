@@ -1,5 +1,6 @@
 import math
 import os
+import re
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
@@ -34,6 +35,22 @@ class PoseResult(NamedTuple):
     # How the lookup resolved; None for results that did not come from a lookup
     # (e.g. concatenated poses).
     coverage: Optional[CoverageType] = None
+
+
+# A standalone integer optionally wrapped in punctuation (e.g. "500."), but not
+# a decimal ("3,14") or an alphanumeric token ("A3")
+INTEGER_TOKEN = re.compile(r"[^A-Za-z0-9]*([0-9]+)[^A-Za-z0-9]*")
+
+
+def gloss_candidates(gloss: str) -> list[str]:
+    """Progressively normalized lookup forms of a gloss, most conservative first."""
+    stripped = gloss.strip().lower()
+    # Glosser artifacts: "REZEPT+" -> "rezept", "haus--" -> "haus", "berg-ix" -> "berg"
+    cleaned = stripped.replace("+", "").replace("--", "").removesuffix("-ix")
+    integer = INTEGER_TOKEN.fullmatch(cleaned)
+    normalized = integer.group(1) if integer else "".join(c for c in cleaned if c.isalpha())
+    candidates = [gloss, stripped, cleaned, normalized]
+    return [c for i, c in enumerate(candidates) if c and c not in candidates[:i]]
 
 
 class PoseLookup:
@@ -128,13 +145,10 @@ class PoseLookup:
     def lookup(
         self, word: str, gloss: str, spoken_language: str, signed_language: str, source: str = None
     ) -> PoseResult:
-        lookup_list = [
-            (self.words_index, (spoken_language, signed_language, word)),
-            (self.glosses_index, (spoken_language, signed_language, word)),
-            (self.glosses_index, (spoken_language, signed_language, gloss)),
-        ]
+        lookup_list = [(self.words_index, word), (self.glosses_index, word)]
+        lookup_list += [(self.glosses_index, candidate) for candidate in gloss_candidates(gloss)]
 
-        for dict_index, (spoken_language, signed_language, term) in lookup_list:
+        for dict_index, term in lookup_list:
             if spoken_language in dict_index:
                 if signed_language in dict_index[spoken_language]:
                     lower_term = term.lower()
@@ -142,6 +156,12 @@ class PoseLookup:
                         rows = dict_index[spoken_language][signed_language][lower_term]
                         pose, signing_span = self.get_pose(self.get_best_row(rows, term))
                         return PoseResult(pose=pose, signing_span=signing_span, coverage=CoverageType.LEXICON)
+
+        # Before falling back, unwrap standalone integers ("500." -> "500") so the
+        # backups don't have to match the punctuation
+        integer_word = INTEGER_TOKEN.fullmatch(word)
+        if integer_word:
+            word = integer_word.group(1)
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:
