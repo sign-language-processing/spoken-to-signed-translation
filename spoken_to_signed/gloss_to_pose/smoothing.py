@@ -26,6 +26,36 @@ def pose_savgol_filter(pose: Pose):
     return pose
 
 
+def pose_butterworth_filter(pose: Pose, cutoff: float = 6.0, order: int = 4):
+    # Low-pass filter each keypoint trajectory over time to remove the jitter and
+    # velocity discontinuities left at the seams between concatenated signs. A
+    # zero-phase Butterworth removes high-frequency noise while preserving the
+    # sign motion, and smooths transitions far better than the light Savitzky-Golay
+    # pass (see "Sign Stitching", Walsh et al., BMVC 2024). The face is left alone.
+    n = pose.body.data.shape[0]
+    nyquist = pose.body.fps / 2
+    wn = min(max(cutoff / nyquist, 1e-3), 0.99)
+    b, a = scipy.signal.butter(order, wn, btype="low")
+
+    # filtfilt needs a sequence longer than its edge padding; short clips keep the
+    # existing Savitzky-Golay smoothing.
+    if n <= 3 * max(len(a), len(b)):
+        return pose_savgol_filter(pose)
+
+    [face_component] = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
+    face_range = range(
+        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[0]),
+        pose.header._get_point_index("FACE_LANDMARKS", face_component.points[-1]),
+    )
+
+    _, _, points, dims = pose.body.data.shape
+    for p in range(points):
+        if p not in face_range:
+            for d in range(dims):
+                pose.body.data[:, 0, p, d] = scipy.signal.filtfilt(b, a, pose.body.data[:, 0, p, d])
+    return pose
+
+
 def create_padding(time: float, example: Pose) -> NumPyPoseBody:
     fps = example.body.fps
     padding_frames = int(time * fps)
@@ -95,4 +125,4 @@ def smooth_concatenate_poses(poses: list[Pose], padding=0.20) -> Pose:
     print("Concatenating...")
     single_pose = concatenate_poses(poses, padding_pose)
     print("Smoothing...")
-    return pose_savgol_filter(single_pose)
+    return pose_butterworth_filter(single_pose)
