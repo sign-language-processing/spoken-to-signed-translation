@@ -2,7 +2,7 @@ import math
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 from pose_format import Pose
 
@@ -13,6 +13,9 @@ from spoken_to_signed.text_to_gloss.types import Gloss
 
 class PoseResult(NamedTuple):
     pose: Pose
+    # Active-signing frame range within the pose, if known (e.g. from a precomputed
+    # segmentation). None means "unknown -- fall back to the elbow heuristic".
+    signing_span: Optional[tuple[int, int]] = None
 
 
 class PoseLookup:
@@ -39,6 +42,10 @@ class PoseLookup:
                     "term": term,
                     "start": int(d["start"]),
                     "end": int(d["end"]),
+                    # Optional precomputed active-signing bounds; default to the
+                    # clip bounds, which the reader treats as "no segmentation".
+                    "segment_start": int(d.get("segment_start") or d["start"]),
+                    "segment_end": int(d.get("segment_end") or d["end"]),
                     "priority": int(d["priority"]),
                 }
             )
@@ -75,7 +82,17 @@ class PoseLookup:
         frame_time = 1000 / pose.body.fps
         start_frame = math.floor(row["start"] // frame_time)
         end_frame = math.ceil(row["end"] // frame_time) if row["end"] > 0 else -1
-        return Pose(pose.header, pose.body[start_frame:end_frame])
+        clip = Pose(pose.header, pose.body[start_frame:end_frame])
+
+        # If a segmentation span was recorded (differs from the clip bounds),
+        # return it in the clip's frame coordinates so trimming can use it instead
+        # of the elbow heuristic; otherwise None (fall back to the heuristic).
+        signing_span = None
+        if (row["segment_start"], row["segment_end"]) != (row["start"], row["end"]):
+            first = math.floor(row["segment_start"] // frame_time) - start_frame
+            last = math.ceil(row["segment_end"] // frame_time) - start_frame
+            signing_span = (max(0, first), min(len(clip.body.data), last))
+        return clip, signing_span
 
     def get_best_row(self, rows, term: str):
         # Sort by priority: lower is "better"
@@ -102,7 +119,8 @@ class PoseLookup:
                     lower_term = term.lower()
                     if lower_term in dict_index[spoken_language][signed_language]:
                         rows = dict_index[spoken_language][signed_language][lower_term]
-                        return PoseResult(pose=self.get_pose(self.get_best_row(rows, term)))
+                        pose, signing_span = self.get_pose(self.get_best_row(rows, term))
+                        return PoseResult(pose=pose, signing_span=signing_span)
 
         # Backup strategy: revert to backup sign language
         if signed_language in LANGUAGE_BACKUP:

@@ -8,7 +8,21 @@ from pose_format.numpy import NumPyPoseBody
 from pose_format.utils.reader import BufferReader
 from tqdm import tqdm
 
-LEXICON_INDEX = ["path", "spoken_language", "signed_language", "start", "end", "words", "glosses", "priority"]
+# segment_start/segment_end optionally hold precomputed active-signing bounds (e.g.
+# from a segmentation model); left equal to start/end, the reader falls back to its
+# elbow heuristic, so populating them is a build-time-only concern.
+LEXICON_INDEX = [
+    "path",
+    "spoken_language",
+    "signed_language",
+    "start",
+    "end",
+    "segment_start",
+    "segment_end",
+    "words",
+    "glosses",
+    "priority",
+]
 
 
 def init_index(index_path: str):
@@ -72,6 +86,10 @@ def load_signsuisse(directory_path: str) -> list[dict[str, str]]:
             "words": words,
             "start": "0",
             "end": str(len(pose_body.data) / fps),  # pose duration
+            # No segmentation at download time -> equal to clip bounds (reader falls
+            # back to the elbow heuristic).
+            "segment_start": "0",
+            "segment_end": str(len(pose_body.data) / fps),
             "glosses": "",
             "priority": "",
         }

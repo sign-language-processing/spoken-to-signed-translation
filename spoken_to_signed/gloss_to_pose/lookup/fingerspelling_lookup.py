@@ -32,7 +32,8 @@ class FingerspellingPoseLookup(CSVPoseLookup):
                     match_index = word.index(key)
 
                     yield from self.characters_lookup(word[:match_index], spoken_language, signed_language)
-                    yield self.get_pose(rows[key][0])
+                    pose, _ = self.get_pose(rows[key][0])
+                    yield pose
                     yield from self.characters_lookup(word[match_index + len(key) :], spoken_language, signed_language)
                     break
 
