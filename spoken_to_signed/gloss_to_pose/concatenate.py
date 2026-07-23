@@ -102,12 +102,7 @@ def cap_pose_duration(pose: Pose, max_seconds: float) -> Pose:
 
 
 def slice_pose(pose: Pose, start: int, end: int) -> Pose:
-    body = NumPyPoseBody(
-        fps=pose.body.fps,
-        data=pose.body.data[start:end].copy(),
-        confidence=pose.body.confidence[start:end].copy(),
-    )
-    return Pose(header=pose.header, body=body)
+    return Pose(header=pose.header, body=pose.body[start:end])
 
 
 def join_poses(poses: list[Pose]) -> Pose:
