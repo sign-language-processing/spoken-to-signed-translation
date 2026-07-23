@@ -2,6 +2,7 @@ import argparse
 import csv
 import os
 from datetime import datetime
+from typing import Optional
 
 from pose_format import Pose, PoseHeader
 from pose_format.numpy import NumPyPoseBody
@@ -33,6 +34,45 @@ def init_index(index_path: str):
             writer.writerow(LEXICON_INDEX)
 
 
+def _segment_loader():
+    """Load the sign-segmentation model used to precompute active-signing bounds,
+    or None to skip segmentation (the reader then falls back to its elbow
+    heuristic). Enabled by setting SEGMENTATION_MODEL_DIR to a local model
+    directory (a safetensors dir or a Lightning .ckpt); this keeps the model a
+    build-time-only, opt-in dependency -- it never touches the translation runtime.
+    """
+    model_dir = os.environ.get("SEGMENTATION_MODEL_DIR")
+    if not model_dir:
+        return None
+    try:
+        from sign_language_segmentation.inference.adapters.model_store import ModelStore
+    except ImportError:
+        print(
+            "SEGMENTATION_MODEL_DIR is set but sign_language_segmentation is not installed; "
+            "skipping segmentation. Install it to precompute segment bounds."
+        )
+        return None
+    return ModelStore(model_dir=model_dir, device="cpu")
+
+
+def _segment_span_ms(pose: Pose, loader) -> Optional[tuple[int, int]]:
+    """The [start, end] of the active signing in milliseconds from the segmentation
+    model, or None if unavailable / no sign detected."""
+    if loader is None:
+        return None
+    from sign_language_segmentation.inference.core.segmentation import segment_pose
+
+    out = segment_pose(pose, model_loader=loader, device="cpu")
+    tiers = out[1] if isinstance(out, tuple) else out
+    signs = tiers.get("SIGN", [])
+    if not signs:
+        return None
+    fps = pose.body.fps
+    first = min(s["start"] for s in signs)
+    last = max(s["end"] for s in signs)
+    return round(first * 1000 / fps), round(last * 1000 / fps)
+
+
 def load_signsuisse(directory_path: str) -> list[dict[str, str]]:
     try:
         import sign_language_datasets  # noqa: F401
@@ -61,6 +101,8 @@ def load_signsuisse(directory_path: str) -> list[dict[str, str]]:
     with open(_POSE_HEADERS["holistic"], "rb") as buffer:
         pose_header = PoseHeader.read(BufferReader(buffer.read()))
 
+    segmenter = _segment_loader()
+
     for datum in tqdm(dataset["train"]):
         uid_raw = datum["id"].numpy().decode("utf-8")
         spoken_language = datum["spokenLanguage"].numpy().decode("utf-8")
@@ -79,19 +121,24 @@ def load_signsuisse(directory_path: str) -> list[dict[str, str]]:
         with open(os.path.join(directory_path, pose_relative_path), "wb") as f:
             pose.write(f)
 
+        # Timings are integer milliseconds (what the reader expects). Segment bounds
+        # come from the model when enabled; otherwise they equal the clip so the
+        # reader falls back to its elbow heuristic.
+        duration_ms = round(1000 * len(pose_body.data) / fps)
+        span = _segment_span_ms(pose, segmenter)
+        segment_start, segment_end = span if span is not None else (0, duration_ms)
+
         yield {
             "path": pose_relative_path,
             "spoken_language": spoken_language,
             "signed_language": signed_language,
             "words": words,
             "start": "0",
-            "end": str(len(pose_body.data) / fps),  # pose duration
-            # No segmentation at download time -> equal to clip bounds (reader falls
-            # back to the elbow heuristic).
-            "segment_start": "0",
-            "segment_end": str(len(pose_body.data) / fps),
+            "end": str(duration_ms),
+            "segment_start": str(segment_start),
+            "segment_end": str(segment_end),
             "glosses": "",
-            "priority": "",
+            "priority": "0",
         }
 
 
