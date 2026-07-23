@@ -5,7 +5,6 @@ import numpy as np
 import scipy.signal
 from pose_format import Pose
 from pose_format.numpy import NumPyPoseBody
-from scipy.spatial.distance import cdist
 
 
 def smooth_non_face(pose: Pose, filter_trajectory) -> Pose:
@@ -81,14 +80,22 @@ def find_best_connection_point(pose1: Pose, pose2: Pose, window=0.3):
     p1_size = math.ceil(min(window * pose1.body.fps, len(pose1.body.data) * window))
     p2_size = math.ceil(min(window * pose2.body.fps, len(pose2.body.data) * window))
 
-    last_data = pose1.body.data[len(pose1.body.data) - p1_size :]
-    first_data = pose2.body.data[:p2_size]
+    last = np.ma.getdata(pose1.body.data)[len(pose1.body.data) - p1_size :, 0]  # (p1, points, dims)
+    first = np.ma.getdata(pose2.body.data)[:p2_size, 0]  # (p2, points, dims)
+    last_conf = pose1.body.confidence[len(pose1.body.data) - p1_size :, 0]  # (p1, points)
+    first_conf = pose2.body.confidence[:p2_size, 0]  # (p2, points)
 
-    last_vectors = last_data.reshape(len(last_data), -1)
-    first_vectors = first_data.reshape(len(first_data), -1)
+    # Confidence-weighted distance between every (last, first) frame pair: a keypoint
+    # counts only where it is detected in BOTH frames (weight = product of the two
+    # confidences), so undetected keypoints -- whose coordinates are arbitrary -- do
+    # not decide the seam. Normalize by the total weight so a pair isn't rewarded for
+    # simply having fewer detected keypoints, and skip pairs that share none.
+    squared = ((last[:, None] - first[None, :]) ** 2).sum(-1)  # (p1, p2, points)
+    weight = last_conf[:, None] * first_conf[None, :]  # (p1, p2, points)
+    total = weight.sum(-1)  # (p1, p2)
+    distances = np.where(total > 0, np.sqrt((weight * squared).sum(-1) / np.maximum(total, 1e-8)), np.inf)
 
-    distances_matrix = cdist(last_vectors, first_vectors, "euclidean")
-    min_index = np.unravel_index(np.argmin(distances_matrix, axis=None), distances_matrix.shape)
+    min_index = np.unravel_index(np.argmin(distances), distances.shape)
     last_index = len(pose1.body.data) - p1_size + min_index[0]
     return last_index, min_index[1]
 
