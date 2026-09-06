@@ -5,6 +5,11 @@ from simplemma.strategies.dictionaries.dictionary_factory import SUPPORTED_LANGU
 from .types import Gloss, GlossItem
 
 
+def tokens_to_gloss(tokens: Gloss, **unused_kwargs) -> list[Gloss]:
+    """Keep caller-provided token boundaries and order."""
+    return [tokens]
+
+
 def text_to_gloss(text: str, language: str, **unused_kwargs) -> list[Gloss]:
     if language in SUPPORTED_LANGUAGES:
         words = [w.lower() for w in simple_tokenizer(text)]
@@ -12,4 +17,4 @@ def text_to_gloss(text: str, language: str, **unused_kwargs) -> list[Gloss]:
     else:
         words = lemmas = text.lower().split(" ")
 
-    return [[GlossItem(word=w, gloss=lemma) for w, lemma in zip(words, lemmas)]]
+    return tokens_to_gloss([GlossItem(word=w, gloss=lemma) for w, lemma in zip(words, lemmas)])

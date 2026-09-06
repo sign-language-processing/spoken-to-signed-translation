@@ -36,6 +36,11 @@ Follow these guidelines:
 Use these rules and examples to produce accurate and readable glosses for each sentence provided.
 """.strip()
 
+TOKENS_SYSTEM_PROMPT = """
+Reorder the supplied tokens into natural sign-language order. Return only a JSON array of their integer indexes.
+Use every index exactly once. Do not add, delete, split, merge, or change tokens.
+""".strip()
+
 
 @lru_cache(maxsize=1)
 def get_openai_client():
@@ -83,6 +88,31 @@ def sentence_to_glosses(sentence: str) -> Iterator[GlossItem]:
             else:
                 sub_item_gloss = sub_item_word = sub_item
             yield GlossItem(word=sub_item_word, gloss=sub_item_gloss)
+
+
+def tokens_to_gloss(tokens: Gloss, language: str, signed_language: str, **kwargs) -> list[Gloss]:
+    messages = [
+        {"role": "system", "content": TOKENS_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "spoken_language": language,
+                    "signed_language": signed_language,
+                    "tokens": [
+                        dict(index=index, word=token.word, gloss=token.gloss) for index, token in enumerate(tokens)
+                    ],
+                }
+            ),
+        },
+    ]
+    response = get_openai_client().chat.completions.create(
+        model="gpt-4o-mini", temperature=0, seed=42, messages=messages, max_tokens=500
+    )
+    order = json.loads(response.choices[0].message.content)
+    if sorted(order) != list(range(len(tokens))):
+        raise ValueError("tokens_to_gloss must return every token index exactly once")
+    return [[tokens[index] for index in order]]
 
 
 def text_to_gloss(text: str, language: str, signed_language: str, **kwargs) -> list[Gloss]:
