@@ -3,14 +3,17 @@
 ([Background](https://research.sign.mt/#text-to-gloss))
 
 
-Each file must implement a `text_to_gloss` function with the following signature:
+Each component implements `text_to_gloss`; reorder-only components can also accept pre-tokenized input:
 
 ```python
-def text_to_gloss(text: str, language: str) -> List[Gloss]:
-    ...
+def text_to_gloss(text: str, language: str) -> List[Gloss]: ...
+
+
+def tokens_to_gloss(tokens: Gloss, language: str, signed_language: str) -> List[Gloss]: ...
 ```
 
-It should return a list of sentences, of tuples, each containing the original word and its gloss.
+Both return sentences of `(word, gloss)` items. `tokens_to_gloss` must preserve every item exactly once, changing only
+their order.
 
 ## `nmt` component
 
