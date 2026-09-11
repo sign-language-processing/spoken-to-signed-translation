@@ -24,14 +24,36 @@ def _omit(item, metadata, following=None, question=False):
     return item.gloss == "be" and any(features.get("Tense") == "Pres" for features in morphology)
 
 
+def _question_length(sentence, metadata):
+    """Find a small, contiguous WH phrase; uncertain clause structure stays unchanged."""
+    first = (sentence[0].word or "").casefold()
+    if sentence[-1].word != "?" or first not in {
+        "what",
+        "which",
+        "who",
+        "where",
+        "when",
+        "why",
+        "how",
+        "how many",
+        "how much",
+    }:
+        return 0
+    end = next((i for i, features in enumerate(metadata) if features.get("pos") == "AUX"), 0)
+    if not end or any(features.get("pos") in {"CCONJ", "SCONJ"} for features in metadata[1:]):
+        return 0
+    if sum(features.get("pos") == "VERB" for features in metadata) > 1:
+        return 0  # Includes unmarked embedded clauses: "what do you think she wants?"
+    if end > 1 and (
+        first not in {"what", "which", "how", "how many", "how much"}
+        or any(features.get("pos") not in {"ADJ", "ADV", "NOUN"} for features in metadata[1:end])
+    ):
+        return 0
+    return end
+
+
 def _sentence_to_gloss(sentence, metadata):
-    question = (
-        len(sentence) > 2
-        and sentence[-1].word == "?"
-        and (sentence[0].word or "").casefold() in {"what", "who", "where", "when", "why", "how"}
-        and metadata[1].get("pos") == "AUX"
-        and not any(features.get("pos") in {"CCONJ", "SCONJ"} for features in metadata)
-    )
+    question_length = _question_length(sentence, metadata)
     # Retain original objects, including punctuation, to preserve source alignment.
     gloss = [
         item
@@ -44,8 +66,9 @@ def _sentence_to_gloss(sentence, metadata):
             and not any(features.get("pos") == "VERB" for features in metadata[:index]),
         )
     ]
-    if question:
-        gloss.insert(-1, gloss.pop(0))
+    if question_length:
+        # Move original objects as one block, including any atomic WSD span.
+        gloss = gloss[question_length:-1] + gloss[:question_length] + gloss[-1:]
     return gloss
 
 
@@ -55,8 +78,8 @@ def tokens_to_gloss(
     """Reorder/drop tokens using aligned ``pos`` and optional ``morphology`` dicts.
 
     Without metadata, retain tokens unchanged. Multiword items stay atomic. Only
-    leading single-word WH questions with an auxiliary and a question mark move;
-    relative clauses and WH noun phrases are deliberately left alone.
+    leading WH words/short phrases followed by an auxiliary in simple questions move;
+    relative, coordinated and ambiguous multi-predicate clauses are left alone.
     """
     if language != "en" or signed_language != "ase":
         raise ValueError("The ASL token rules support only en → ase")

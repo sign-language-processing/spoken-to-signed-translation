@@ -37,3 +37,11 @@ Forced JSON yielded cleaner syntax but worse orders on this local model, so it i
 The model can handle WH phrases and time fronting that the cheap rules leave alone, but regresses other cases.
 Keep model-assisted glossing opt-in. The reliable changes are the index contract and rule regressions: preserve
 emphatic `do`, and do not move leading WH words across coordinated clauses. Dictionaries/fingerspelling remain downstream.
+
+## Fixed-rule follow-up
+
+Whole short WH phrases now move together using existing POS metadata, including WSD's `SCONJ` tag for leading “how”.
+The same inspected 19-case diagnostic improves from 16/19 to 17/19; time fronting remains unimplemented.
+Live WSD checks confirmed “your car what color?”, “you have how many books?”, and “you want which book?” without a
+glossing-model call. An embedded “what do you think she wants?” is now left conservative rather than moving WH across
+both predicates. Tests also cover an atomic “how many” span retaining the exact original object.

@@ -19,9 +19,11 @@ or duplicating tokens; grammar components may omit items as well as reorder them
 
 `asl.tokens_to_gloss` accepts existing English tokens and aligned `metadata` dictionaries containing `pos` and optionally
 `morphology` (a list of feature dictionaries). It drops articles, present-tense copulas and present-tense support “do,”
-and moves a leading single-word WH question after the remaining words: “what is your name?” → “your name what?”.
-Without metadata it preserves the input. These conservative rules are not a complete ASL grammar; relative clauses,
-multiword question phrases, tense/aspect realization, spatial agreement and nonmanuals need further work.
+and moves a leading WH word or short phrase after the remaining words: “what is your name?” → “your name what?”;
+“how many books do you have?” → “you have how many books?”. Original items and multiword spans stay intact.
+Without metadata it preserves the input. Relative/coordinated clauses and ambiguous multi-predicate sentences remain
+in input order. These rules are not a complete ASL grammar; tense/aspect realization, spatial agreement and nonmanuals
+need further work.
 
 ## `gpt` indexed token component
 

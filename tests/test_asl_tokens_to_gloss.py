@@ -36,7 +36,12 @@ def gloss(words, positions, lemmas=None, morphology=None):
         ("they were here .", "PRON AUX ADV PUNCT", "they were here ."),
         ("she will be here .", "PRON AUX AUX ADV PUNCT", "she will be here ."),
         ("go where we live .", "VERB SCONJ PRON VERB PUNCT", "go where we live ."),
-        ("what color is your car ?", "DET NOUN AUX PRON NOUN PUNCT", "what color your car ?"),
+        ("what color is your car ?", "PRON NOUN AUX PRON NOUN PUNCT", "your car what color ?"),
+        ("which book do you want ?", "DET NOUN AUX PRON VERB PUNCT", "you want which book ?"),
+        ("how many books do you have ?", "SCONJ ADJ NOUN AUX PRON VERB PUNCT", "you have how many books ?"),
+        ("how old are you ?", "SCONJ ADJ AUX PRON PUNCT", "you how old ?"),
+        ("what do you think she wants ?", "PRON AUX PRON VERB PRON VERB PUNCT", "what you think she wants ?"),
+        ("who Mary is ?", "PRON PROPN AUX PUNCT", "who Mary ?"),
         ("who did the work ?", "PRON VERB DET NOUN PUNCT", "who did work ?"),
         ("what is your name", "PRON AUX PRON NOUN", "what your name"),
     ],
@@ -65,3 +70,10 @@ def test_contract_and_atomic_spans_without_metadata():
 def test_contracted_copula_uses_lemma_and_morphology():
     assert gloss("she 's here", "PRON AUX ADV", "she be here", {1: {"Tense": "Pres"}}) == [["she", "here"]]
     assert gloss("she 's eaten", "PRON AUX VERB", "she have eat", {1: {"Tense": "Pres"}}) == [["she", "'s", "eaten"]]
+
+
+def test_atomic_question_span_moves_without_splitting_or_recreating_it():
+    tokens = [GlossItem(w, w) for w in ["how many", "books", "do", "you", "have", "?"]]
+    metadata = [{"pos": pos} for pos in ["ADJ", "NOUN", "AUX", "PRON", "VERB", "PUNCT"]]
+    [result] = tokens_to_gloss(tokens, metadata=metadata)
+    assert all(actual is tokens[i] for actual, i in zip(result, [3, 4, 0, 1, 5]))
