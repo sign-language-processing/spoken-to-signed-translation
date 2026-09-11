@@ -24,6 +24,13 @@ def gloss(words, positions, lemmas=None, morphology=None):
         ("where do you live ?", "ADV AUX PRON VERB PUNCT", "you live where ?"),
         ("I do not like the book .", "PRON AUX PART VERB DET NOUN PUNCT", "I not like book ."),
         ("I do the work .", "PRON VERB DET NOUN PUNCT", "I do work ."),
+        ("I do like it .", "PRON AUX VERB PRON PUNCT", "I do like it ."),
+        ("do you know I do like it ?", "AUX PRON VERB PRON AUX VERB PRON PUNCT", "you know I do like it ?"),
+        (
+            "what is your name , and where do you live ?",
+            "PRON AUX PRON NOUN PUNCT CCONJ ADV AUX PRON VERB PUNCT",
+            "what your name , and where you live ?",
+        ),
         ("she has a book .", "PRON VERB DET NOUN PUNCT", "she has book ."),
         ("she has read the book .", "PRON AUX VERB DET NOUN PUNCT", "she has read book ."),
         ("they were here .", "PRON AUX ADV PUNCT", "they were here ."),

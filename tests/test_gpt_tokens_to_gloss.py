@@ -1,0 +1,89 @@
+import json
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
+
+from spoken_to_signed.text_to_gloss import gpt
+from spoken_to_signed.text_to_gloss.types import GlossItem
+
+
+@pytest.fixture
+def client(monkeypatch):
+    mock = MagicMock()
+    monkeypatch.setattr(gpt, "get_openai_client", lambda: mock)
+    return mock
+
+
+def respond(client, payload):
+    client.chat.completions.create.return_value = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))]
+    )
+
+
+def question():
+    tokens = [GlossItem(word, word) for word in ["what", "is", "your", "name", "?"]]
+    return tokens, [{"pos": pos} for pos in ["PRON", "AUX", "PRON", "NOUN", "PUNCT"]]
+
+
+def test_index_selection_preserves_identity_and_sends_optional_indexes(client, monkeypatch):
+    monkeypatch.setenv("OPENAI_MODEL", "openai/gpt-oss-20b")
+    tokens, metadata = question()
+    respond(client, {"order": [2, 3, 0, 4]})
+    [result] = gpt.tokens_to_gloss(tokens, "en", "ase", metadata=metadata)
+    assert all(actual is tokens[i] for actual, i in zip(result, [2, 3, 0, 4]))
+    call = client.chat.completions.create.call_args.kwargs
+    assert call["model"] == "openai/gpt-oss-20b"
+    assert json.loads(call["messages"][1]["content"])["optional_indexes"] == [1]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"order": [2, 3, False, 4]},
+        {"order": [2, 3, 0.0, 4]},
+        {"order": [2, 3, "0", 4]},
+        {"order": [2, 3, -1, 4]},
+        {"order": [2, 3, 5, 4]},
+        {"order": [2, 3, 0, 0, 4]},
+        {"order": [3, 0, 4]},
+        {"order": []},
+        {"order": "2,3,0,4"},
+        {},
+        [2, 3, 0, 4],
+        None,
+    ],
+)
+def test_rejects_invalid_or_meaning_losing_indexes(client, payload):
+    tokens, metadata = question()
+    respond(client, payload)
+    with pytest.raises(ValueError, match="unique token indexes"):
+        gpt.tokens_to_gloss(tokens, "en", "ase", metadata=metadata)
+
+
+def test_without_metadata_no_omissions_are_authorized(client):
+    tokens, _ = question()
+    respond(client, {"order": [2, 3, 0, 4]})
+    with pytest.raises(ValueError, match="non-optional"):
+        gpt.tokens_to_gloss(tokens, "en", "ase")
+
+
+@pytest.mark.parametrize("order", [[2, 3, 0, 1], [1, 0, 2, 3]])
+def test_rejects_cross_sentence_reordering_and_moved_punctuation(client, order):
+    tokens = [GlossItem(word, word) for word in ["hello", ".", "bye", "."]]
+    respond(client, {"order": order})
+    with pytest.raises(ValueError, match="boundaries|punctuation"):
+        gpt.tokens_to_gloss(tokens, "en", "ase")
+
+
+def test_multiple_sentences_remain_separate(client):
+    tokens = [GlossItem(word, word) for word in ["hello", ".", "bye", "."]]
+    respond(client, {"order": [0, 1, 2, 3]})
+    assert gpt.tokens_to_gloss(tokens, "en", "ase") == [tokens[:2], tokens[2:]]
+
+
+def test_empty_input_does_not_call_model_and_metadata_is_checked(client):
+    assert gpt.tokens_to_gloss([], "en", "ase") == [[]]
+    with pytest.raises(ValueError, match="one entry"):
+        gpt.tokens_to_gloss(question()[0], "en", "ase", metadata=[])
+    client.chat.completions.create.assert_not_called()

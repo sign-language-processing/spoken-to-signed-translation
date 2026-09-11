@@ -23,6 +23,25 @@ and moves a leading single-word WH question after the remaining words: “what i
 Without metadata it preserves the input. These conservative rules are not a complete ASL grammar; relative clauses,
 multiword question phrases, tense/aspect realization, spatial agreement and nonmanuals need further work.
 
+## `gpt` indexed token component
+
+Install `spoken-to-signed[gpt]`. For a local OpenAI-compatible server, set:
+
+```sh
+export OPENAI_BASE_URL=http://localhost:1234/v1
+export OPENAI_API_KEY=local
+export OPENAI_MODEL=openai/gpt-oss-20b
+```
+
+`gpt.tokens_to_gloss` accepts the same tokens and metadata. The model returns `{"order": [2, 3, 0, 4]}`:
+indexes are zero-based input items, not retokenized words. Omitted indexes are dropped. Existing ASL rules identify
+which omissions are allowed; without English/ASL metadata every token is required. Invalid indexes, duplication,
+missing required tokens, and moves across sentence boundaries raise `ValueError`. The returned items are the original
+objects, so WSD sense/entity links stay aligned. `OPENAI_MODEL` defaults to `gpt-4o-mini`.
+
+This is experimental and opt-in. Weak-model outputs can satisfy the index contract but still have poor word order;
+they are not validated ASL. See `benchmarks/token_gloss.py` for a small reproducible diagnostic, not an accuracy benchmark.
+
 ## `nmt` component
 
 Using this component means that the spoken language text is translated into a sequence of sign language glosses with

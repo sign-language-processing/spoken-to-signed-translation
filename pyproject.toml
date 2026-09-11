@@ -20,7 +20,10 @@ dependencies = [
 dev = [
     "pytest",
     "ruff",
+    "openai",
+    "python-dotenv",
 ]
+gpt = ["openai", "python-dotenv"]
 lexicon = [
     "sign-language-datasets",
 ]
