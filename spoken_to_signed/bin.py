@@ -102,7 +102,7 @@ def _lexicon_input_arguments(parser: argparse.ArgumentParser):
 
 def _text_input_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--text", type=str, required=True)
-    parser.add_argument("--glosser", choices=["simple", "spacylemma", "rules", "nmt"], required=True)
+    parser.add_argument("--glosser", choices=["simple", "spacylemma", "rules", "gpt", "nmt"], required=True)
 
     pre_parser = argparse.ArgumentParser(add_help=False)
     pre_parser.add_argument("--lexicon", type=str)
@@ -127,7 +127,7 @@ def text_to_gloss():
 
     print("Text to gloss")
     print("Input text:", args.text)
-    sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
+    sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
     print("Output gloss:", sentences)
 
 
@@ -188,7 +188,7 @@ def text_to_gloss_to_pose():
     args_parser.add_argument("--coverage-stats", type=str, help="Save per-token lexicon coverage to a JSON file")
     args = args_parser.parse_args()
 
-    sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser)
+    sentences = _text_to_gloss(args.text, args.spoken_language, args.glosser, signed_language=args.signed_language)
     result, coverage = _gloss_to_pose(
         sentences, args.lexicon, args.spoken_language, args.signed_language, args.disable_fingerspelling
     )

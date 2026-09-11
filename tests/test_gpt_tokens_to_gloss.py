@@ -86,4 +86,6 @@ def test_empty_input_does_not_call_model_and_metadata_is_checked(client):
     assert gpt.tokens_to_gloss([], "en", "ase") == [[]]
     with pytest.raises(ValueError, match="one entry"):
         gpt.tokens_to_gloss(question()[0], "en", "ase", metadata=[])
+    with pytest.raises(ValueError, match="one entry"):
+        gpt.tokens_to_gloss([], "en", "ase", metadata=[{}])
     client.chat.completions.create.assert_not_called()

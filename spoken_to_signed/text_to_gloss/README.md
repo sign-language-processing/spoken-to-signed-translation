@@ -15,34 +15,23 @@ def tokens_to_gloss(tokens: Gloss, language: str, signed_language: str) -> List[
 Both return sentences of `(word, gloss)` items. Token-based components return original item objects, without introducing
 or duplicating tokens; grammar components may omit items as well as reorder them.
 
-## `asl` token component
+## `rules` and `gpt`
 
-`asl.tokens_to_gloss` accepts existing English tokens and aligned `metadata` dictionaries containing `pos` and optionally
-`morphology` (a list of feature dictionaries). It drops articles, present-tense copulas and present-tense support “do,”
-and moves a leading WH word or short phrase after the remaining words: “what is your name?” → “your name what?”;
-“how many books do you have?” → “you have how many books?”. Original items and multiword spans stay intact.
-Without metadata it preserves the input. Relative/coordinated clauses and ambiguous multi-predicate sentences remain
-in input order. These rules are not a complete ASL grammar; tense/aspect realization, spatial agreement and nonmanuals
-need further work.
+Use `rules` for rule-based glossing or `gpt` for model-based glossing, including English → ASL (`en` → `ase`).
+The existing German/French text rules are unchanged. English text rules require the `spacy` extra.
 
-## `gpt` indexed token component
+Both accept pre-tokenized input via `tokens_to_gloss(tokens, language="en", signed_language="ase", metadata=metadata)`.
+Each metadata entry supplies `pos` and optionally `morphology` (a list of feature dictionaries).
+The English/ASL rules drop articles and present-tense support auxiliaries and move short WH phrases in simple questions.
+They preserve unknown constructions and, without metadata, leave the tokens unchanged. Pre-tokenized rules currently
+support only English → ASL; they never retokenize or split multiword items.
 
-Install `spoken-to-signed[gpt]`. For a local OpenAI-compatible server, set:
+GPT chooses token indexes, with omissions limited to those allowed by the rules. Invalid indexes, duplicates,
+missing required tokens and cross-sentence moves are rejected. This compares ordering strategies under the same
+omission constraints, not unrestricted translation. Neither method implements full ASL grammar or nonmanuals.
 
-```sh
-export OPENAI_BASE_URL=http://localhost:1234/v1
-export OPENAI_API_KEY=local
-export OPENAI_MODEL=openai/gpt-oss-20b
-```
-
-`gpt.tokens_to_gloss` accepts the same tokens and metadata. The model returns `{"order": [2, 3, 0, 4]}`:
-indexes are zero-based input items, not retokenized words. Omitted indexes are dropped. Existing ASL rules identify
-which omissions are allowed; without English/ASL metadata every token is required. Invalid indexes, duplication,
-missing required tokens, and moves across sentence boundaries raise `ValueError`. The returned items are the original
-objects, so WSD sense/entity links stay aligned. `OPENAI_MODEL` defaults to `gpt-4o-mini`.
-
-This is experimental and opt-in. Weak-model outputs can satisfy the index contract but still have poor word order;
-they are not validated ASL. See `benchmarks/token_gloss.py` for a small reproducible diagnostic, not an accuracy benchmark.
+Install the `gpt` extra and set `OPENAI_API_KEY`. `OPENAI_MODEL` defaults to `gpt-4o-mini`;
+`OPENAI_BASE_URL` can point to a local OpenAI-compatible server (for example `http://localhost:1234/v1`).
 
 ## `nmt` component
 

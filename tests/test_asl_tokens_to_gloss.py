@@ -1,6 +1,9 @@
+from types import SimpleNamespace
+
 import pytest
 
-from spoken_to_signed.text_to_gloss.asl import tokens_to_gloss
+from spoken_to_signed.text_to_gloss import rules
+from spoken_to_signed.text_to_gloss.rules import tokens_to_gloss
 from spoken_to_signed.text_to_gloss.types import GlossItem
 
 
@@ -43,6 +46,12 @@ def gloss(words, positions, lemmas=None, morphology=None):
         ("what do you think she wants ?", "PRON AUX PRON VERB PRON VERB PUNCT", "what you think she wants ?"),
         ("who Mary is ?", "PRON PROPN AUX PUNCT", "who Mary ?"),
         ("who did the work ?", "PRON VERB DET NOUN PUNCT", "who did work ?"),
+        ("who is coming ?", "PRON AUX VERB PUNCT", "who coming ?"),
+        ("which book is missing ?", "DET NOUN AUX VERB PUNCT", "which book missing ?"),
+        ("what is wrong ?", "PRON AUX ADJ PUNCT", "what wrong ?"),
+        ("who is not coming ?", "PRON AUX PART VERB PUNCT", "who not coming ?"),
+        ("who is really coming ?", "PRON AUX ADV VERB PUNCT", "who really coming ?"),
+        ("which book has been missing ?", "DET NOUN AUX AUX VERB PUNCT", "which book has been missing ?"),
         ("what is your name", "PRON AUX PRON NOUN", "what your name"),
     ],
 )
@@ -72,8 +81,51 @@ def test_contracted_copula_uses_lemma_and_morphology():
     assert gloss("she 's eaten", "PRON AUX VERB", "she have eat", {1: {"Tense": "Pres"}}) == [["she", "'s", "eaten"]]
 
 
+def test_empty_input_and_metadata():
+    assert tokens_to_gloss([]) == [[]]
+    assert tokens_to_gloss([], metadata=[]) == [[]]
+    with pytest.raises(ValueError, match="one entry"):
+        tokens_to_gloss([], metadata=[{}])
+
+
 def test_atomic_question_span_moves_without_splitting_or_recreating_it():
     tokens = [GlossItem(w, w) for w in ["how many", "books", "do", "you", "have", "?"]]
     metadata = [{"pos": pos} for pos in ["ADJ", "NOUN", "AUX", "PRON", "VERB", "PUNCT"]]
     [result] = tokens_to_gloss(tokens, metadata=metadata)
     assert all(actual is tokens[i] for actual, i in zip(result, [3, 4, 0, 1, 5]))
+
+
+@pytest.mark.parametrize("punctuation", [True, False])
+def test_text_rules_share_token_rules(monkeypatch, punctuation):
+    doc = [
+        SimpleNamespace(
+            text=word, lemma_=lemma, pos_=pos, is_punct=pos == "PUNCT", morph=SimpleNamespace(to_dict=lambda: {})
+        )
+        for word, lemma, pos in zip(
+            ["What", "is", "your", "name", "?"],
+            ["what", "be", "your", "name", "?"],
+            ["PRON", "AUX", "PRON", "NOUN", "PUNCT"],
+        )
+    ]
+    monkeypatch.setattr(rules, "load_spacy_model", lambda _: lambda text: doc)
+    [result] = rules.text_to_gloss("What is your name?", "en", signed_language="ase", punctuation=punctuation)
+    expected = ["your", "name", "What"] + (["?"] if punctuation else [])
+    assert [item.word for item in result] == expected
+
+
+def test_english_rules_do_not_apply_to_other_sign_languages():
+    with pytest.raises(ValueError, match="en → ase"):
+        rules.text_to_gloss("Hello", "en", signed_language="bfi")
+
+
+@pytest.mark.parametrize("language", ["de", "fr"])
+def test_existing_text_rules_keep_their_path(monkeypatch, language):
+    model = object()
+    monkeypatch.setattr(rules, "load_spacy_model", lambda _: model)
+
+    def legacy(text, spacy_model, lang, punctuation):
+        assert (text, spacy_model, lang, punctuation) == ("input", model, language, True)
+        return {"tokens": ["word"], "glosses": ["gloss"]}
+
+    monkeypatch.setattr(rules, "text_to_gloss_given_spacy_model", legacy)
+    assert rules.text_to_gloss("input", language, punctuation=True) == [[GlossItem("word", "gloss")]]

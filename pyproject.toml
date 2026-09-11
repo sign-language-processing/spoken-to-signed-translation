@@ -79,6 +79,7 @@ include-package-data = true
 spoken_to_signed = [
     "*.pth",
     "assets/*",
+    "text_to_gloss/*.json",
 ]
 
 [tool.pytest.ini_options]
