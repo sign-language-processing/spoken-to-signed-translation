@@ -12,8 +12,16 @@ def text_to_gloss(text: str, language: str) -> List[Gloss]: ...
 def tokens_to_gloss(tokens: Gloss, language: str, signed_language: str) -> List[Gloss]: ...
 ```
 
-Both return sentences of `(word, gloss)` items. `tokens_to_gloss` must preserve every item exactly once, changing only
-their order.
+Both return sentences of `(word, gloss)` items. Token-based components return original item objects, without introducing
+or duplicating tokens; grammar components may omit items as well as reorder them.
+
+## `asl` token component
+
+`asl.tokens_to_gloss` accepts existing English tokens and aligned `metadata` dictionaries containing `pos` and optionally
+`morphology` (a list of feature dictionaries). It drops articles, present-tense copulas and present-tense support “do,”
+and moves a leading single-word WH question after the remaining words: “what is your name?” → “your name what?”.
+Without metadata it preserves the input. These conservative rules are not a complete ASL grammar; relative clauses,
+multiword question phrases, tense/aspect realization, spatial agreement and nonmanuals need further work.
 
 ## `nmt` component
 
