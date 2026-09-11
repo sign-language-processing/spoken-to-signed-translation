@@ -20,7 +20,10 @@ dependencies = [
 dev = [
     "pytest",
     "ruff",
+    "openai",
+    "python-dotenv",
 ]
+gpt = ["openai", "python-dotenv"]
 lexicon = [
     "sign-language-datasets",
 ]
@@ -76,6 +79,7 @@ include-package-data = true
 spoken_to_signed = [
     "*.pth",
     "assets/*",
+    "text_to_gloss/*.json",
 ]
 
 [tool.pytest.ini_options]
