@@ -109,7 +109,7 @@ text_to_gloss_to_pose_to_video \
 
 ```bash
 pip install '.[server]'
-MODEL_VERSION=local uvicorn spoken_to_signed.server:app --port 8080
+MODEL_VERSION=local hypercorn spoken_to_signed.server:app --bind 0.0.0.0:8080
 ```
 
 `POST /tokens-to-gloss` wraps the existing `rules` (default, English → ASL) or
@@ -151,6 +151,10 @@ GitHub Actions builds the image on PRs and publishes
 with a unique build version baked in. The CPU image needs no spaCy model or database;
 `PORT` defaults to `8080`. Authentication and caching belong to the calling gateway;
 deploy this service on an internal network.
+
+Hypercorn serves HTTP/1.1 and cleartext HTTP/2 (h2c) on the same port. The container
+smoke test checks both. Configure the gateway/deployment to use HTTP/2 upstream;
+server support alone does not make every connection HTTP/2.
 
 ### Optional pose lookup
 

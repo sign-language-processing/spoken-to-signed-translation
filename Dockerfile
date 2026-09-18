@@ -13,4 +13,4 @@ ENV MODEL_VERSION=${MODEL_VERSION} \
     PORT=8080
 EXPOSE 8080
 
-CMD ["sh", "-c", "exec python -m uvicorn spoken_to_signed.server:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "exec python -m hypercorn spoken_to_signed.server:app --bind 0.0.0.0:$PORT"]
