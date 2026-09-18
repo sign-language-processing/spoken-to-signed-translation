@@ -1,0 +1,7 @@
+*
+!pyproject.toml
+!README.md
+!spoken_to_signed/
+!spoken_to_signed/**
+**/__pycache__
+**/*_test.py

@@ -105,6 +105,72 @@ text_to_gloss_to_pose_to_video \
   --video <output_video_file_path>.mp4
 ```
 
+## HTTP service
+
+```bash
+pip install '.[server]'
+MODEL_VERSION=local hypercorn spoken_to_signed.server:app --bind 0.0.0.0:8080
+```
+
+`POST /tokens-to-gloss` accepts atomic words/spans with POS and optional morphology:
+
+```json
+{
+  "spoken_language": "en",
+  "signed_language": "ase",
+  "tokens": [
+    {"word": "What", "gloss": "what", "pos": "PRON"},
+    {"word": "is", "gloss": "be", "pos": "AUX"},
+    {"word": "your", "gloss": "your", "pos": "PRON"},
+    {"word": "name", "gloss": "name", "pos": "NOUN"},
+    {"word": "?", "gloss": "?", "pos": "PUNCT"}
+  ]
+}
+```
+
+Returns `sentences` containing the original objects in **your name what ?** order,
+plus `indexes: [[2, 3, 0, 4]]`. All annotations pass through unchanged; no merging
+in the caller. `glosser` is `rules` (default, English → ASL) or `simple` (identity).
+`morphology` is a list of spaCy feature dictionaries, one per source token in a span.
+These are mechanical rules, not fluent ASL. Unknown words remain for downstream
+fingerspelling; punctuation remains for sentence boundaries. TODO: batch API.
+
+For model-based reordering, install `.[server,gpt]`, set `OPENAI_API_KEY` at runtime,
+and send `"glosser": "gpt"`. This uses `gpt-5.6-luna` with reasoning disabled (override model with `OPENAI_MODEL`);
+only rules-approved omissions are allowed. Rules/simple need no API key.
+
+`POST /senses-to-gloss` accepts `senses` (the WSD document with `tokens`, `synsets`,
+and `entities`) plus the same language/glosser fields. It groups multiword spans
+before glossing and returns the same response. Indexes refer to grouped candidates;
+each candidate carries its original `start_token`/`end_token`, exact-span senses and
+entities, and `source` annotations for later lookup/fallback. Unknown words survive.
+Overlapping spans prefer the widest meaning (earlier on ties); constituent senses
+are never treated as senses of the whole phrase. No dictionary lookup happens here.
+
+`POST /gloss-to-pose` accepts already ordered `tokens` and the same language fields,
+returning binary `application/pose`. It uses the existing lookup and concatenation,
+excluding `pos: "PUNCT"`. Optional: `fingerspelling=true`, `anonymize=false`, `source`
+(PostgreSQL video-ID prefix). Configure `LEXICON_PATH` for CSV or `DATABASE_URL`
+for PostgreSQL (takes precedence); without either, pose requests return 503.
+For PostgreSQL, install `.[server,postgres,gcs]` and use a read-only role.
+The optional `SQLPoseLookup` backend migrates the old `models` captions-table lookup
+and reads `gs://sign-mt-poses`; it is not dictionary-api synset lookup.
+Glosser/health requests need no database. See `/docs` for the full API schema.
+
+```bash
+docker build --build-arg MODEL_VERSION=local -t spoken-to-signed .
+docker run --rm -p 8080:8080 spoken-to-signed
+```
+
+Releases publish `ghcr.io/sign-language-processing/spoken-to-signed-translation:<tag>`.
+The image includes PostgreSQL/GCS/GPT dependencies. `PORT` defaults to 8080; Hypercorn
+supports HTTP/1.1 and HTTP/2 (h2c). Configure HTTP/2 upstream in the gateway too.
+`/health` returns `version`; successful API responses include `X-Model-Tag`, set by
+`MODEL_VERSION` (baked into release images), with a suffix identifying the configured
+GPT model and base URL. Deploy internally; auth and caching
+belong to the gateway. Caller routing and the old caption-maintenance job still need
+migrating before retiring the function in `models`.
+
 ## Methodology
 
 The pipeline consists of three main components:
