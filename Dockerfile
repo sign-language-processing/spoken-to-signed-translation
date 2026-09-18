@@ -3,7 +3,7 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY spoken_to_signed ./spoken_to_signed
-RUN pip install --no-cache-dir '.[server,postgres,gcs]' \
+RUN pip install --no-cache-dir '.[server,postgres,gcs,gpt]' \
     && useradd --create-home --uid 1000 app
 
 USER app

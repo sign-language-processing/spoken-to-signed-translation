@@ -128,7 +128,11 @@ def tokens_to_gloss(tokens: Gloss, language: str, signed_language: str, *, metad
         },
     ]
     response = get_openai_client().chat.completions.create(
-        model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"), temperature=0, seed=42, messages=messages, max_tokens=1024
+        model=os.environ.get("OPENAI_MODEL", "gpt-5.6-luna"),
+        reasoning_effort="none",
+        seed=42,
+        messages=messages,
+        max_completion_tokens=1024,
     )
     payload = json.loads(response.choices[0].message.content)
     order = payload.get("order") if isinstance(payload, dict) else None
@@ -177,7 +181,11 @@ def text_to_gloss(text: str, language: str, signed_language: str, **kwargs) -> l
     )
 
     response = get_openai_client().chat.completions.create(
-        model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"), temperature=0, seed=42, messages=messages, max_tokens=500
+        model=os.environ.get("OPENAI_MODEL", "gpt-5.6-luna"),
+        reasoning_effort="none",
+        seed=42,
+        messages=messages,
+        max_completion_tokens=500,
     )
 
     prediction = response.choices[0].message.content

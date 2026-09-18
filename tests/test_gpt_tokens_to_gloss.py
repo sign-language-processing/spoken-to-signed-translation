@@ -26,6 +26,28 @@ def question():
     return tokens, [{"pos": pos} for pos in ["PRON", "AUX", "PRON", "NOUN", "PUNCT"]]
 
 
+@pytest.mark.parametrize("pretokenized", [True, False])
+def test_luna_request_parameters(client, monkeypatch, pretokenized):
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    if pretokenized:
+        respond(client, {"order": [2, 3, 0, 4]})
+        tokens, metadata = question()
+        gpt.tokens_to_gloss(tokens, "en", "ase", metadata=metadata)
+    else:
+        respond(client, ["YOUR/your NAME/name WHAT/What"])
+        assert [token.gloss for token in gpt.text_to_gloss("What is your name?", "en", "ase")[0]] == [
+            "YOUR",
+            "NAME",
+            "WHAT",
+        ]
+    call = client.chat.completions.create.call_args.kwargs
+    assert call["model"] == "gpt-5.6-luna"
+    assert call["reasoning_effort"] == "none"
+    assert call["max_completion_tokens"] == (1024 if pretokenized else 500)
+    assert "max_tokens" not in call
+    assert "temperature" not in call
+
+
 def test_index_selection_preserves_identity_and_sends_optional_indexes(client, monkeypatch):
     monkeypatch.setenv("OPENAI_MODEL", "openai/gpt-oss-20b")
     tokens, metadata = question()

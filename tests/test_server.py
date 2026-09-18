@@ -23,7 +23,14 @@ def test_health(client):
     assert response.headers["X-Model-Tag"] == "test-build"
 
 
-def test_question(client):
+@pytest.mark.parametrize("glosser", ["rules", "gpt"])
+def test_question(client, monkeypatch, glosser):
+    if glosser == "gpt":
+        from spoken_to_signed.text_to_gloss import gpt
+
+        upstream = MagicMock()
+        upstream.chat.completions.create.return_value.choices[0].message.content = '{"order": [2, 3, 0, 4]}'
+        monkeypatch.setattr(gpt, "get_openai_client", lambda: upstream)
     tokens = [
         {"word": word, "gloss": gloss, "pos": pos}
         for word, gloss, pos in [
@@ -36,7 +43,7 @@ def test_question(client):
     ]
     tokens[1]["synsets"] = [{"id": "be.v.01"}]
     tokens[3].update(synsets=[{"id": "name.n.01", "confidence": 0.9}], start_token=3, end_token=3)
-    response = client.post("/tokens-to-gloss", json=request(tokens))
+    response = client.post("/tokens-to-gloss", json=request(tokens, glosser=glosser))
     assert response.status_code == 200
     assert response.json() == {"sentences": [[tokens[2], tokens[3], tokens[0], tokens[4]]], "indexes": [[2, 3, 0, 4]]}
     assert response.headers["X-Model-Tag"] == "test-build"

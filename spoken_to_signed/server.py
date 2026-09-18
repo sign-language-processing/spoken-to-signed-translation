@@ -30,7 +30,7 @@ class GlossRequest(BaseModel):
     tokens: list[Token]
     spoken_language: str
     signed_language: str
-    glosser: Literal["rules", "simple"] = "rules"
+    glosser: Literal["rules", "simple", "gpt"] = "rules"
 
 
 class GlossResponse(BaseModel):
@@ -75,7 +75,10 @@ def health(response: Response):
 def tokens_to_gloss(request: GlossRequest, response: Response):
     tokens = [GlossItem(token.word, token.gloss) for token in request.tokens]
     indexes = {id(token): index for index, token in enumerate(tokens)}
-    glosser = {"rules": rules, "simple": simple}[request.glosser]
+    if request.glosser == "gpt":
+        from spoken_to_signed.text_to_gloss import gpt as glosser
+    else:
+        glosser = {"rules": rules, "simple": simple}[request.glosser]
     try:
         sentences = glosser.tokens_to_gloss(
             tokens,

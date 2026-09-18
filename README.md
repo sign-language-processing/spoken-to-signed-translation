@@ -135,6 +135,10 @@ in the caller. `glosser` is `rules` (default, English → ASL) or `simple` (iden
 These are mechanical rules, not fluent ASL. Unknown words remain for downstream
 fingerspelling; punctuation remains for sentence boundaries. TODO: batch API.
 
+For model-based reordering, install `.[server,gpt]`, set `OPENAI_API_KEY` at runtime,
+and send `"glosser": "gpt"`. This uses `gpt-5.6-luna` with reasoning disabled (override model with `OPENAI_MODEL`);
+only rules-approved omissions are allowed. Rules/simple need no API key.
+
 `POST /gloss-to-pose` accepts already ordered `tokens` and the same language fields,
 returning binary `application/pose`. It uses the existing lookup and concatenation,
 excluding `pos: "PUNCT"`. Optional: `fingerspelling=true`, `anonymize=false`, `source`
@@ -151,7 +155,7 @@ docker run --rm -p 8080:8080 spoken-to-signed
 ```
 
 Releases publish `ghcr.io/sign-language-processing/spoken-to-signed-translation:<tag>`.
-The image includes PostgreSQL/GCS dependencies. `PORT` defaults to 8080; Hypercorn
+The image includes PostgreSQL/GCS/GPT dependencies. `PORT` defaults to 8080; Hypercorn
 supports HTTP/1.1 and HTTP/2 (h2c). Configure HTTP/2 upstream in the gateway too.
 `/health` returns `version`; successful API responses include `X-Model-Tag`, set by
 `MODEL_VERSION` (baked into release images). Deploy internally; auth and caching
