@@ -47,7 +47,7 @@ def test_question(client, monkeypatch, glosser):
         from spoken_to_signed.text_to_gloss import gpt
 
         upstream = MagicMock()
-        upstream.chat.completions.create.return_value.choices[0].message.content = '{"order": [2, 3, 0, 4]}'
+        upstream.chat.completions.create.return_value.choices[0].message.content = '[2, 3, 0, 4]'
         monkeypatch.setattr(gpt, "get_openai_client", lambda: upstream)
     tokens = [
         {"word": word, "gloss": gloss, "pos": pos}

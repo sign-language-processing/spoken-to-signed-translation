@@ -30,7 +30,7 @@ def question():
 def test_luna_request_parameters(client, monkeypatch, pretokenized):
     monkeypatch.delenv("OPENAI_MODEL", raising=False)
     if pretokenized:
-        respond(client, {"order": [2, 3, 0, 4]})
+        respond(client, [2, 3, 0, 4])
         tokens, metadata = question()
         gpt.tokens_to_gloss(tokens, "en", "ase", metadata=metadata)
     else:
@@ -51,7 +51,7 @@ def test_luna_request_parameters(client, monkeypatch, pretokenized):
 def test_index_selection_preserves_identity_and_sends_optional_indexes(client, monkeypatch):
     monkeypatch.setenv("OPENAI_MODEL", "openai/gpt-oss-20b")
     tokens, metadata = question()
-    respond(client, {"order": [2, 3, 0, 4]})
+    respond(client, [2, 3, 0, 4])
     [result] = gpt.tokens_to_gloss(tokens, "en", "ase", metadata=metadata)
     assert all(actual is tokens[i] for actual, i in zip(result, [2, 3, 0, 4]))
     call = client.chat.completions.create.call_args.kwargs
@@ -61,14 +61,14 @@ def test_index_selection_preserves_identity_and_sends_optional_indexes(client, m
 
 def test_token_prompt_demonstrates_reordering_and_dropping_before_actual_input(client):
     tokens = [GlossItem("Hello", "hello"), GlossItem("!", "!")]
-    respond(client, {"order": [0, 1]})
+    respond(client, [0, 1])
     gpt.tokens_to_gloss(tokens, "en", "ase")
     messages = client.chat.completions.create.call_args.kwargs["messages"]
     assert [message["role"] for message in messages] == ["system", "user", "assistant", "user", "assistant", "user"]
     expected = [["your", "name", "What", "?"], ["Yesterday", "she", "bought", "red", "car", "in", "London", "."]]
     for offset, words in zip([1, 3], expected):
         example = json.loads(messages[offset]["content"])
-        order = json.loads(messages[offset + 1]["content"])["order"]
+        order = json.loads(messages[offset + 1]["content"])
         example_tokens = [GlossItem(t["word"], t["gloss"]) for t in example["tokens"]]
         required = set(range(len(example_tokens))) - set(example["optional_indexes"])
         [selected] = gpt._select_tokens(example_tokens, order, required)
@@ -81,17 +81,17 @@ def test_token_prompt_demonstrates_reordering_and_dropping_before_actual_input(c
 @pytest.mark.parametrize(
     "payload",
     [
-        {"order": [2, 3, False, 4]},
-        {"order": [2, 3, 0.0, 4]},
-        {"order": [2, 3, "0", 4]},
-        {"order": [2, 3, -1, 4]},
-        {"order": [2, 3, 5, 4]},
-        {"order": [2, 3, 0, 0, 4]},
-        {"order": [3, 0, 4]},
-        {"order": []},
-        {"order": "2,3,0,4"},
+        [2, 3, False, 4],
+        [2, 3, 0.0, 4],
+        [2, 3, "0", 4],
+        [2, 3, -1, 4],
+        [2, 3, 5, 4],
+        [2, 3, 0, 0, 4],
+        [3, 0, 4],
+        [],
+        "2,3,0,4",
         {},
-        [2, 3, 0, 4],
+        {"order": [2, 3, 0, 4]},
         None,
     ],
 )
@@ -104,7 +104,7 @@ def test_rejects_invalid_or_meaning_losing_indexes(client, payload):
 
 def test_without_metadata_no_omissions_are_authorized(client):
     tokens, _ = question()
-    respond(client, {"order": [2, 3, 0, 4]})
+    respond(client, [2, 3, 0, 4])
     with pytest.raises(ValueError, match="non-optional"):
         gpt.tokens_to_gloss(tokens, "en", "ase")
 
@@ -112,14 +112,14 @@ def test_without_metadata_no_omissions_are_authorized(client):
 @pytest.mark.parametrize("order", [[2, 3, 0, 1], [1, 0, 2, 3]])
 def test_rejects_cross_sentence_reordering_and_moved_punctuation(client, order):
     tokens = [GlossItem(word, word) for word in ["hello", ".", "bye", "."]]
-    respond(client, {"order": order})
+    respond(client, order)
     with pytest.raises(ValueError, match="boundaries|punctuation"):
         gpt.tokens_to_gloss(tokens, "en", "ase")
 
 
 def test_multiple_sentences_remain_separate(client):
     tokens = [GlossItem(word, word) for word in ["hello", ".", "bye", "."]]
-    respond(client, {"order": [0, 1, 2, 3]})
+    respond(client, [0, 1, 2, 3])
     assert gpt.tokens_to_gloss(tokens, "en", "ase") == [tokens[:2], tokens[2:]]
 
 
