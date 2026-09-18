@@ -2,7 +2,7 @@
 
 import os
 from io import BytesIO
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
@@ -47,7 +47,7 @@ class SourceToken(BaseModel):
 
 class SenseSpan(BaseModel):
     model_config = ConfigDict(extra="allow")
-    id: str | int
+    id: Union[str, int]
     start_token: StrictInt
     end_token: StrictInt
 
