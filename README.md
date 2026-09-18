@@ -105,6 +105,89 @@ text_to_gloss_to_pose_to_video \
   --video <output_video_file_path>.mp4
 ```
 
+## HTTP service
+
+```bash
+pip install '.[server]'
+MODEL_VERSION=local uvicorn spoken_to_signed.server:app --port 8080
+```
+
+`POST /tokens-to-gloss` wraps the existing `rules` (default, English → ASL) or
+`simple` (identity) token glosser. It does not tokenize, look up signs, or construct poses.
+Send atomic words or multiword spans, with POS and optional morphology from WSD:
+
+```json
+{
+  "spoken_language": "en",
+  "signed_language": "ase",
+  "tokens": [
+    {"word": "What", "gloss": "what", "pos": "PRON"},
+    {"word": "is", "gloss": "be", "pos": "AUX"},
+    {"word": "your", "gloss": "your", "pos": "PRON"},
+    {"word": "name", "gloss": "name", "pos": "NOUN"},
+    {"word": "?", "gloss": "?", "pos": "PUNCT"}
+  ]
+}
+```
+
+Response: `{"sentences": [[2, 3, 0, 4]]}` — **your name what ?**.
+Indexes refer to the input items, not raw WSD token positions. The caller retains each
+item's senses, entity links, and source spans. Missing indexes are dropped; unknown
+words remain available for downstream fingerspelling. Punctuation remains for sentence
+boundaries, not dictionary lookup. `morphology` is a list of spaCy feature dictionaries,
+one per source token in an item. The rules are a mechanical baseline, not fluent ASL.
+
+`GET /health` returns `version`; successful responses include `X-Model-Tag`.
+Set `MODEL_VERSION` to identify the deployed build for downstream caches. `/docs`
+documents the request schema. Each request handles one document; TODO: batch API.
+
+```bash
+docker build --build-arg MODEL_VERSION=local -t spoken-to-signed .
+docker run --rm -p 8080:8080 spoken-to-signed
+```
+
+GitHub Actions builds the image on PRs and publishes
+`ghcr.io/sign-language-processing/spoken-to-signed-translation:<release-tag>` on releases,
+with a unique build version baked in. The CPU image needs no spaCy model or database;
+`PORT` defaults to `8080`. Authentication and caching belong to the calling gateway;
+deploy this service on an internal network.
+
+### Optional pose lookup
+
+`POST /gloss-to-pose` takes **already ordered** `tokens`, `spoken_language`, and
+`signed_language`, and returns binary `application/pose`. It delegates lookup,
+fingerspelling, and concatenation to the existing library. Punctuation marked
+`pos: "PUNCT"` is excluded. Optional parameters: `fingerspelling` (default `true`),
+`anonymize` (default `false`), and `source` (PostgreSQL video-ID prefix filter).
+
+Configure one server-side backend:
+
+- `LEXICON_PATH`: a local CSV lexicon directory.
+- `DATABASE_URL`: PostgreSQL connection string (takes precedence). Install
+  `.[server,postgres,gcs]`; these extras are included in the Docker image.
+
+The PostgreSQL backend is migrated from `models/functions_py/spoken_text_to_signed_pose`.
+It queries the existing `captions` table (`videoId`, `language`, `videoLanguage`,
+`start`, `end`, `text`, `lemmas`), then reads public poses from `gs://sign-mt-poses`.
+This is the legacy caption lookup, **not** synset/entity lookup through dictionary-api.
+Use a read-only database role. No database is contacted by health/glossing requests.
+Without a configured backend, pose requests return 503.
+
+Library users can also supply this backend directly:
+
+```python
+from spoken_to_signed.gloss_to_pose.lookup.sql_lookup import SQLPoseLookup
+from spoken_to_signed.gloss_to_pose.lookup.fingerspelling_lookup import FingerspellingPoseLookup
+
+lookup = SQLPoseLookup(database_config={"dsn": database_url}, backup=FingerspellingPoseLookup())
+```
+
+Omit `backup` to disable fingerspelling. Candidate lookup is one query per gloss
+sequence; the existing lookup implements language fallback and coverage reporting.
+The HTTP service does not copy the old Firebase scheduler, interpreter asset, browser
+authentication, or mutable global request settings. Migrate callers and the caption
+maintenance job separately before retiring the old function in `models`.
+
 ## Methodology
 
 The pipeline consists of three main components:

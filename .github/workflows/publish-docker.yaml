@@ -1,0 +1,46 @@
+name: Docker
+
+on:
+  pull_request:
+  release:
+    types: [published]
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        if: github.event_name == 'release'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+      - uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .
+          push: ${{ github.event_name == 'release' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            MODEL_VERSION=${{ github.sha }}-${{ github.run_id }}.${{ github.run_attempt }}
+      - name: Smoke test the service
+        if: github.event_name == 'pull_request'
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+        run: |
+          docker run -d --name glosser -p 8080:8080 "$IMAGE"
+          trap 'docker logs glosser; docker rm -f glosser' EXIT
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://localhost:8080/health | jq -e '.version != ""'
+          curl --fail http://localhost:8080/tokens-to-gloss \
+            -H 'Content-Type: application/json' \
+            -d '{"spoken_language":"en","signed_language":"ase","tokens":[{"word":"hello","gloss":"hello"}]}' \
+            | jq -e '.sentences == [[0]]'

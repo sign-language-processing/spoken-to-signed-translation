@@ -22,7 +22,12 @@ dev = [
     "ruff",
     "openai",
     "python-dotenv",
+    "spoken-to-signed[server]",
+    "httpx",
+    "spoken-to-signed[postgres]",
 ]
+server = ["fastapi", "pydantic>=2", "uvicorn"]
+postgres = ["psycopg2-binary"]
 gpt = ["openai", "python-dotenv"]
 lexicon = [
     "sign-language-datasets",

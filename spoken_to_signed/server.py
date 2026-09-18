@@ -1,0 +1,109 @@
+"""HTTP adapters for pretokenized glossing and optional dictionary-based poses."""
+
+import os
+from io import BytesIO
+from typing import Literal, Optional
+
+from fastapi import FastAPI, HTTPException, Response
+from pydantic import BaseModel, ConfigDict, Field
+
+from spoken_to_signed.text_to_gloss import rules, simple
+from spoken_to_signed.text_to_gloss.types import GlossItem
+
+MODEL_VERSION = os.environ.get("MODEL_VERSION", "")
+app = FastAPI(title="Spoken-to-signed glossing")
+
+
+class Token(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    word: Optional[str] = None
+    gloss: str
+    pos: Optional[str] = None
+    morphology: list[dict[str, str]] = Field(default_factory=list)
+
+
+class GlossRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tokens: list[Token]
+    spoken_language: str
+    signed_language: str
+    glosser: Literal["rules", "simple"] = "rules"
+
+
+class GlossResponse(BaseModel):
+    # Zero-based input indexes, grouped by sentence. Omitted indexes were dropped.
+    sentences: list[list[int]]
+
+
+class PoseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tokens: list[Token] = Field(min_length=1)
+    spoken_language: str
+    signed_language: str
+    source: Optional[str] = None
+    fingerspelling: bool = True
+    anonymize: bool = False
+
+
+def pose_lookup(fingerspelling: bool, source: Optional[str]):
+    from spoken_to_signed.gloss_to_pose.lookup import CSVPoseLookup
+    from spoken_to_signed.gloss_to_pose.lookup.fingerspelling_lookup import FingerspellingPoseLookup
+    from spoken_to_signed.gloss_to_pose.lookup.sql_lookup import SQLPoseLookup
+
+    backup = FingerspellingPoseLookup() if fingerspelling else None
+    if database_url := os.environ.get("DATABASE_URL"):
+        return SQLPoseLookup({"dsn": database_url}, backup=backup)
+    if lexicon := os.environ.get("LEXICON_PATH"):
+        if source is not None:
+            raise HTTPException(status_code=422, detail="source filtering requires the PostgreSQL backend")
+        return CSVPoseLookup(lexicon, backup=backup)
+    raise HTTPException(status_code=503, detail="Configure DATABASE_URL or LEXICON_PATH to enable pose lookup")
+
+
+@app.get("/health")
+def health(response: Response):
+    response.headers["X-Model-Tag"] = MODEL_VERSION
+    return {"status": "healthy", "version": MODEL_VERSION}
+
+
+@app.post("/tokens-to-gloss", response_model=GlossResponse)
+def tokens_to_gloss(request: GlossRequest, response: Response):
+    tokens = [GlossItem(token.word, token.gloss) for token in request.tokens]
+    indexes = {id(token): index for index, token in enumerate(tokens)}
+    glosser = {"rules": rules, "simple": simple}[request.glosser]
+    try:
+        sentences = glosser.tokens_to_gloss(
+            tokens,
+            language=request.spoken_language,
+            signed_language=request.signed_language,
+            metadata=[token.model_dump(include={"pos", "morphology"}) for token in request.tokens],
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    response.headers["X-Model-Tag"] = MODEL_VERSION
+    return GlossResponse(sentences=[[indexes[id(token)] for token in sentence] for sentence in sentences])
+
+
+@app.post("/gloss-to-pose", response_class=Response)
+def gloss_to_pose(request: PoseRequest):
+    from spoken_to_signed.gloss_to_pose import gloss_to_pose as construct_pose
+
+    # A lookup per request keeps fallback settings and coverage request-local.
+    lookup = pose_lookup(request.fingerspelling, request.source)
+    tokens = [GlossItem(token.word or token.gloss, token.gloss) for token in request.tokens if token.pos != "PUNCT"]
+    if not tokens:
+        raise HTTPException(status_code=422, detail="No non-punctuation glosses")
+    result = construct_pose(
+        tokens,
+        lookup,
+        request.spoken_language,
+        request.signed_language,
+        source=request.source,
+        anonymize=request.anonymize,
+    )
+    buffer = BytesIO()
+    result.pose.write(buffer)
+    return Response(buffer.getvalue(), media_type="application/pose", headers={"X-Model-Tag": MODEL_VERSION})
