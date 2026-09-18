@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,6 +24,21 @@ def test_health(client):
     response = client.get("/health")
     assert response.json() == {"status": "healthy", "version": "test-build"}
     assert response.headers["X-Model-Tag"] == "test-build"
+
+
+def test_version_distinguishes_model_overrides_without_credentials():
+    def version(**env):
+        return subprocess.check_output(
+            [sys.executable, "-c", "from spoken_to_signed.server import MODEL_VERSION; print(MODEL_VERSION)"],
+            env={**os.environ, "MODEL_VERSION": "build", "OPENAI_MODEL": "gpt-5.6-luna", "OPENAI_BASE_URL": "", **env},
+            text=True,
+        ).strip()
+
+    baseline = version()
+    assert baseline == version(OPENAI_API_KEY="not-a-real-key")
+    assert baseline != version(OPENAI_MODEL="qwen3.5-0.8b")
+    assert baseline != version(OPENAI_BASE_URL="http://localhost:1234/v1")
+    assert version(MODEL_VERSION="") == ""
 
 
 @pytest.mark.parametrize("glosser", ["rules", "gpt"])

@@ -166,7 +166,8 @@ Releases publish `ghcr.io/sign-language-processing/spoken-to-signed-translation:
 The image includes PostgreSQL/GCS/GPT dependencies. `PORT` defaults to 8080; Hypercorn
 supports HTTP/1.1 and HTTP/2 (h2c). Configure HTTP/2 upstream in the gateway too.
 `/health` returns `version`; successful API responses include `X-Model-Tag`, set by
-`MODEL_VERSION` (baked into release images). Deploy internally; auth and caching
+`MODEL_VERSION` (baked into release images), with a suffix identifying the configured
+GPT model and base URL. Deploy internally; auth and caching
 belong to the gateway. Caller routing and the old caption-maintenance job still need
 migrating before retiring the function in `models`.
 

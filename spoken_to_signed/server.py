@@ -1,6 +1,7 @@
 """HTTP adapters for pretokenized glossing and optional dictionary-based poses."""
 
 import os
+from hashlib import sha256
 from io import BytesIO
 from typing import Literal, Optional, Union
 
@@ -12,6 +13,10 @@ from spoken_to_signed.text_to_gloss.senses import prepare_tokens
 from spoken_to_signed.text_to_gloss.types import GlossItem
 
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "")
+if MODEL_VERSION:
+    # A local model override must not attest the production GPT configuration.
+    model_config = (os.environ.get("OPENAI_MODEL", "gpt-5.6-luna"), os.environ.get("OPENAI_BASE_URL", ""))
+    MODEL_VERSION += "-" + sha256(repr(model_config).encode()).hexdigest()[:12]
 app = FastAPI(title="Spoken-to-signed glossing")
 
 
