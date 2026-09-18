@@ -9,10 +9,9 @@ from .lookup import PoseLookup, gloss_candidates
 
 
 class SQLPoseLookup(PoseLookup):
-    def __init__(self, database_config: dict, backup: PoseLookup = None, pose_prefix="gs://sign-mt-poses"):
+    def __init__(self, database_config: dict, backup: PoseLookup = None):
         super().__init__(rows=[], backup=backup)
         self.database_config = database_config
-        self.pose_prefix = pose_prefix.rstrip("/")
 
     def query(self, sql: str, params):
         import psycopg2
@@ -28,9 +27,12 @@ class SQLPoseLookup(PoseLookup):
     def get_initial_candidates(self, glosses: Gloss, spoken_language: str, signed_language: str, source=None):
         # Match exactly the forms PoseLookup will try, including atomic multiword items.
         terms = sorted({term.lower() for word, gloss in glosses for term in [word or gloss, *gloss_candidates(gloss)]})
-        rows = self.query(
+        return self.query(
             """
-            SELECT * FROM (
+            SELECT 'gs://sign-mt-poses/' || "videoId" || '.pose' AS path,
+                   language AS spoken_language, "videoLanguage" AS signed_language,
+                   start, "end", phrase AS words, coalesce(gloss, '') AS glosses, 0 AS priority
+            FROM (
                 SELECT "videoId", language, "videoLanguage", start, "end",
                        unnest(string_to_array(text, ' / ')) AS phrase,
                        unnest(string_to_array(lemmas, ' / ')) AS gloss
@@ -43,19 +45,6 @@ class SQLPoseLookup(PoseLookup):
             """,
             (spoken_language, sorted(languages_set(signed_language)), source or "", terms, terms),
         )
-        return [
-            {
-                "path": f"{self.pose_prefix}/{row['videoId']}.pose",
-                "spoken_language": row["language"],
-                "signed_language": row["videoLanguage"],
-                "start": row["start"],
-                "end": row["end"],
-                "words": row["phrase"],
-                "glosses": row["gloss"] or "",
-                "priority": 0,
-            }
-            for row in rows
-        ]
 
     def lookup(self, word: str, gloss: str, spoken_language: str, signed_language: str, source=None):
         return self.lookup_sequence([GlossItem(word, gloss)], spoken_language, signed_language, source)[0]

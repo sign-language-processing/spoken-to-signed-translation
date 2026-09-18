@@ -9,19 +9,7 @@ from spoken_to_signed.text_to_gloss.types import GlossItem
 
 def test_candidates_are_parameterized_and_match_lookup_forms(monkeypatch):
     lookup = SQLPoseLookup({"dbname": "test"})
-    query = MagicMock(
-        return_value=[
-            {
-                "videoId": "test/sign",
-                "language": "en",
-                "videoLanguage": "ase",
-                "start": 0,
-                "end": 1000,
-                "phrase": "New York",
-                "gloss": None,
-            }
-        ]
-    )
+    query = MagicMock(return_value=[{"path": "gs://sign-mt-poses/test/sign.pose", "words": "New York"}])
     monkeypatch.setattr(lookup, "query", query)
     rows = lookup.get_initial_candidates(
         [GlossItem("New York", "NEW YORK"), GlossItem(None, "BOOK+"), GlossItem("x'", "x'")],
@@ -35,18 +23,7 @@ def test_candidates_are_parameterized_and_match_lookup_forms(monkeypatch):
     assert params[3] == params[4]
     assert "source_%'" not in sql
     assert "x'" not in sql
-    assert rows == [
-        {
-            "path": "gs://sign-mt-poses/test/sign.pose",
-            "spoken_language": "en",
-            "signed_language": "ase",
-            "start": 0,
-            "end": 1000,
-            "words": "New York",
-            "glosses": "",
-            "priority": 0,
-        }
-    ]
+    assert rows == query.return_value
 
 
 def test_database_connection_is_readonly_and_closed(monkeypatch):

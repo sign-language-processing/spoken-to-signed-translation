@@ -112,9 +112,7 @@ pip install '.[server]'
 MODEL_VERSION=local hypercorn spoken_to_signed.server:app --bind 0.0.0.0:8080
 ```
 
-`POST /tokens-to-gloss` wraps the existing `rules` (default, English → ASL) or
-`simple` (identity) token glosser. It does not tokenize, look up signs, or construct poses.
-Send atomic words or multiword spans, with POS and optional morphology from WSD:
+`POST /tokens-to-gloss` accepts atomic words/spans with POS and optional morphology:
 
 ```json
 {
@@ -130,78 +128,35 @@ Send atomic words or multiword spans, with POS and optional morphology from WSD:
 }
 ```
 
-The response contains the retained input objects, reordered — **your name what ?**:
+Returns `sentences` containing the original objects in **your name what ?** order,
+plus `indexes: [[2, 3, 0, 4]]`. All annotations pass through unchanged; no merging
+in the caller. `glosser` is `rules` (default, English → ASL) or `simple` (identity).
+`morphology` is a list of spaCy feature dictionaries, one per source token in a span.
+These are mechanical rules, not fluent ASL. Unknown words remain for downstream
+fingerspelling; punctuation remains for sentence boundaries. TODO: batch API.
 
-```json
-{"sentences": [[
-  {"word": "your", "gloss": "your", "pos": "PRON"},
-  {"word": "name", "gloss": "name", "pos": "NOUN"},
-  {"word": "What", "gloss": "what", "pos": "PRON"},
-  {"word": "?", "gloss": "?", "pos": "PUNCT"}
-]], "indexes": [[2, 3, 0, 4]]}
-```
-
-Additional fields on each item (senses, entity links, source spans, etc.) pass through
-unchanged; no index-to-input merge is needed. Omitted optional fields stay omitted.
-`indexes` retains the original input-item positions for tracing, grouped like `sentences`.
-Unknown words remain available for downstream fingerspelling. Punctuation remains for sentence
-boundaries, not dictionary lookup. `morphology` is a list of spaCy feature dictionaries,
-one per source token in an item. The rules are a mechanical baseline, not fluent ASL.
-
-`GET /health` returns `version`; successful responses include `X-Model-Tag`.
-Set `MODEL_VERSION` to identify the deployed build for downstream caches. `/docs`
-documents the request schema. Each request handles one document; TODO: batch API.
+`POST /gloss-to-pose` accepts already ordered `tokens` and the same language fields,
+returning binary `application/pose`. It uses the existing lookup and concatenation,
+excluding `pos: "PUNCT"`. Optional: `fingerspelling=true`, `anonymize=false`, `source`
+(PostgreSQL video-ID prefix). Configure `LEXICON_PATH` for CSV or `DATABASE_URL`
+for PostgreSQL (takes precedence); without either, pose requests return 503.
+For PostgreSQL, install `.[server,postgres,gcs]` and use a read-only role.
+The optional `SQLPoseLookup` backend migrates the old `models` captions-table lookup
+and reads `gs://sign-mt-poses`; it is not dictionary-api synset lookup.
+Glosser/health requests need no database. See `/docs` for the full API schema.
 
 ```bash
 docker build --build-arg MODEL_VERSION=local -t spoken-to-signed .
 docker run --rm -p 8080:8080 spoken-to-signed
 ```
 
-GitHub Actions builds the image on PRs and publishes
-`ghcr.io/sign-language-processing/spoken-to-signed-translation:<release-tag>` on releases,
-with a unique build version baked in. The CPU image needs no spaCy model or database;
-`PORT` defaults to `8080`. Authentication and caching belong to the calling gateway;
-deploy this service on an internal network.
-
-Hypercorn serves HTTP/1.1 and cleartext HTTP/2 (h2c) on the same port. The container
-smoke test checks both. Configure the gateway/deployment to use HTTP/2 upstream;
-server support alone does not make every connection HTTP/2.
-
-### Optional pose lookup
-
-`POST /gloss-to-pose` takes **already ordered** `tokens`, `spoken_language`, and
-`signed_language`, and returns binary `application/pose`. It delegates lookup,
-fingerspelling, and concatenation to the existing library. Punctuation marked
-`pos: "PUNCT"` is excluded. Optional parameters: `fingerspelling` (default `true`),
-`anonymize` (default `false`), and `source` (PostgreSQL video-ID prefix filter).
-
-Configure one server-side backend:
-
-- `LEXICON_PATH`: a local CSV lexicon directory.
-- `DATABASE_URL`: PostgreSQL connection string (takes precedence). Install
-  `.[server,postgres,gcs]`; these extras are included in the Docker image.
-
-The PostgreSQL backend is migrated from `models/functions_py/spoken_text_to_signed_pose`.
-It queries the existing `captions` table (`videoId`, `language`, `videoLanguage`,
-`start`, `end`, `text`, `lemmas`), then reads public poses from `gs://sign-mt-poses`.
-This is the legacy caption lookup, **not** synset/entity lookup through dictionary-api.
-Use a read-only database role. No database is contacted by health/glossing requests.
-Without a configured backend, pose requests return 503.
-
-Library users can also supply this backend directly:
-
-```python
-from spoken_to_signed.gloss_to_pose.lookup.sql_lookup import SQLPoseLookup
-from spoken_to_signed.gloss_to_pose.lookup.fingerspelling_lookup import FingerspellingPoseLookup
-
-lookup = SQLPoseLookup(database_config={"dsn": database_url}, backup=FingerspellingPoseLookup())
-```
-
-Omit `backup` to disable fingerspelling. Candidate lookup is one query per gloss
-sequence; the existing lookup implements language fallback and coverage reporting.
-The HTTP service does not copy the old Firebase scheduler, interpreter asset, browser
-authentication, or mutable global request settings. Migrate callers and the caption
-maintenance job separately before retiring the old function in `models`.
+Releases publish `ghcr.io/sign-language-processing/spoken-to-signed-translation:<tag>`.
+The image includes PostgreSQL/GCS dependencies. `PORT` defaults to 8080; Hypercorn
+supports HTTP/1.1 and HTTP/2 (h2c). Configure HTTP/2 upstream in the gateway too.
+`/health` returns `version`; successful API responses include `X-Model-Tag`, set by
+`MODEL_VERSION` (baked into release images). Deploy internally; auth and caching
+belong to the gateway. Caller routing and the old caption-maintenance job still need
+migrating before retiring the function in `models`.
 
 ## Methodology
 
