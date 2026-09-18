@@ -130,10 +130,21 @@ Send atomic words or multiword spans, with POS and optional morphology from WSD:
 }
 ```
 
-Response: `{"sentences": [[2, 3, 0, 4]]}` — **your name what ?**.
-Indexes refer to the input items, not raw WSD token positions. The caller retains each
-item's senses, entity links, and source spans. Missing indexes are dropped; unknown
-words remain available for downstream fingerspelling. Punctuation remains for sentence
+The response contains the retained input objects, reordered — **your name what ?**:
+
+```json
+{"sentences": [[
+  {"word": "your", "gloss": "your", "pos": "PRON"},
+  {"word": "name", "gloss": "name", "pos": "NOUN"},
+  {"word": "What", "gloss": "what", "pos": "PRON"},
+  {"word": "?", "gloss": "?", "pos": "PUNCT"}
+]], "indexes": [[2, 3, 0, 4]]}
+```
+
+Additional fields on each item (senses, entity links, source spans, etc.) pass through
+unchanged; no index-to-input merge is needed. Omitted optional fields stay omitted.
+`indexes` retains the original input-item positions for tracing, grouped like `sentences`.
+Unknown words remain available for downstream fingerspelling. Punctuation remains for sentence
 boundaries, not dictionary lookup. `morphology` is a list of spaCy feature dictionaries,
 one per source token in an item. The rules are a mechanical baseline, not fluent ASL.
 

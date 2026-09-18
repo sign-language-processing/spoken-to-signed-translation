@@ -43,7 +43,7 @@ jobs:
             http://localhost:8080/health | jq -e '.version != ""'
           version=$(curl --fail --http2-prior-knowledge http://localhost:8080/tokens-to-gloss \
             -H 'Content-Type: application/json' \
-            -d '{"spoken_language":"en","signed_language":"ase","tokens":[{"word":"hello","gloss":"hello"}]}' \
+            -d '{"spoken_language":"en","signed_language":"ase","tokens":[{"word":"hello","gloss":"hello","entities":[]}]}' \
             --output gloss.json --write-out '%{http_version}')
           test "$version" = 2
-          jq -e '.sentences == [[0]]' gloss.json
+          jq -e '. == {"sentences":[[{"word":"hello","gloss":"hello","entities":[]}]],"indexes":[[0]]}' gloss.json

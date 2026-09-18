@@ -34,20 +34,22 @@ def test_question(client):
             ("?", "?", "PUNCT"),
         ]
     ]
+    tokens[1]["synsets"] = [{"id": "be.v.01"}]
+    tokens[3].update(synsets=[{"id": "name.n.01", "confidence": 0.9}], start_token=3, end_token=3)
     response = client.post("/tokens-to-gloss", json=request(tokens))
     assert response.status_code == 200
-    assert response.json() == {"sentences": [[2, 3, 0, 4]]}
+    assert response.json() == {"sentences": [[tokens[2], tokens[3], tokens[0], tokens[4]]], "indexes": [[2, 3, 0, 4]]}
     assert response.headers["X-Model-Tag"] == "test-build"
 
 
 def test_atomic_spans_duplicates_and_unknown_words(client):
     tokens = [
-        {"word": "New York", "gloss": "New York", "pos": "PROPN"},
-        {"word": "Amit", "gloss": "Amit", "pos": "PROPN"},
-        {"word": "Amit", "gloss": "Amit", "pos": "PROPN"},
+        {"word": "New York", "gloss": "New York", "pos": "PROPN", "start_token": 0, "end_token": 1},
+        {"word": "Amit", "gloss": "Amit", "pos": "PROPN", "start_token": 2},
+        {"word": "Amit", "gloss": "Amit", "pos": "PROPN", "start_token": 3},
     ]
     response = client.post("/tokens-to-gloss", json=request(tokens))
-    assert response.json() == {"sentences": [[0, 1, 2]]}
+    assert response.json() == {"sentences": [tokens], "indexes": [[0, 1, 2]]}
 
 
 def test_morphology_and_sentence_boundaries(client):
@@ -60,14 +62,38 @@ def test_morphology_and_sentence_boundaries(client):
         {"word": "!", "gloss": "!", "pos": "PUNCT"},
     ]
     response = client.post("/tokens-to-gloss", json=request(tokens))
-    assert response.json() == {"sentences": [[0, 2, 3], [4, 5]]}
+    assert response.json() == {
+        "sentences": [[tokens[0], tokens[2], tokens[3]], tokens[4:]],
+        "indexes": [[0, 2, 3], [4, 5]],
+    }
 
 
 def test_simple_and_empty(client):
     response = client.post("/tokens-to-gloss", json=request([], glosser="simple"))
-    assert response.json() == {"sentences": [[]]}
+    assert response.json() == {"sentences": [[]], "indexes": [[]]}
     response = client.post("/tokens-to-gloss", json=request([{"gloss": "the"}], glosser="simple"))
-    assert response.json() == {"sentences": [[0]]}
+    assert response.json() == {"sentences": [[{"gloss": "the"}]], "indexes": [[0]]}
+
+
+@pytest.mark.parametrize("glosser", ["rules", "simple"])
+def test_annotations_round_trip_without_adding_defaults(client, glosser):
+    tokens = [
+        {"gloss": "minimal"},
+        {
+            "word": "books",
+            "gloss": "book",
+            "pos": "NOUN",
+            "morphology": [{"Number": "Plur"}],
+            "synsets": [{"id": "book.n.01", "confidence": 0.9}],
+            "entities": [],
+            "span": {"start_token": 1, "end_token": 1, "start_char": 8, "end_char": 13},
+            "annotation": None,
+        },
+        {"word": None, "gloss": "explicit defaults", "pos": None, "morphology": []},
+    ]
+    response = client.post("/tokens-to-gloss", json=request(tokens, glosser=glosser))
+    assert response.status_code == 200
+    assert response.json() == {"sentences": [tokens], "indexes": [[0, 1, 2]]}
 
 
 @pytest.mark.parametrize(
@@ -106,7 +132,10 @@ def test_pose_endpoint_composes_existing_library(client, monkeypatch):
     response = client.post(
         "/gloss-to-pose",
         json=request(
-            [{"gloss": "hello"}, {"gloss": ".", "pos": "PUNCT"}], fingerspelling=False, source="test", anonymize=True
+            [{"gloss": "hello", "synsets": [{"id": "hello.n.01"}]}, {"gloss": ".", "pos": "PUNCT"}],
+            fingerspelling=False,
+            source="test",
+            anonymize=True,
         ),
     )
     assert response.status_code == 200

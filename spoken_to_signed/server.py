@@ -15,7 +15,8 @@ app = FastAPI(title="Spoken-to-signed glossing")
 
 
 class Token(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # Carry caller annotations through glossing and on to downstream lookup.
+    model_config = ConfigDict(extra="allow")
 
     word: Optional[str] = None
     gloss: str
@@ -33,8 +34,9 @@ class GlossRequest(BaseModel):
 
 
 class GlossResponse(BaseModel):
-    # Zero-based input indexes, grouped by sentence. Omitted indexes were dropped.
-    sentences: list[list[int]]
+    sentences: list[list[Token]]
+    # Original input-item positions, grouped exactly like sentences.
+    indexes: list[list[int]]
 
 
 class PoseRequest(BaseModel):
@@ -69,7 +71,7 @@ def health(response: Response):
     return {"status": "healthy", "version": MODEL_VERSION}
 
 
-@app.post("/tokens-to-gloss", response_model=GlossResponse)
+@app.post("/tokens-to-gloss", response_model=GlossResponse, response_model_exclude_unset=True)
 def tokens_to_gloss(request: GlossRequest, response: Response):
     tokens = [GlossItem(token.word, token.gloss) for token in request.tokens]
     indexes = {id(token): index for index, token in enumerate(tokens)}
@@ -84,7 +86,8 @@ def tokens_to_gloss(request: GlossRequest, response: Response):
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     response.headers["X-Model-Tag"] = MODEL_VERSION
-    return GlossResponse(sentences=[[indexes[id(token)] for token in sentence] for sentence in sentences])
+    order = [[indexes[id(token)] for token in sentence] for sentence in sentences]
+    return GlossResponse(sentences=[[request.tokens[index] for index in sentence] for sentence in order], indexes=order)
 
 
 @app.post("/gloss-to-pose", response_class=Response)
