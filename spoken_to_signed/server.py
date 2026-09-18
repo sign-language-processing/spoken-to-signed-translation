@@ -5,9 +5,10 @@ from io import BytesIO
 from typing import Literal, Optional
 
 from fastapi import FastAPI, HTTPException, Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
 from spoken_to_signed.text_to_gloss import rules, simple
+from spoken_to_signed.text_to_gloss.senses import prepare_tokens
 from spoken_to_signed.text_to_gloss.types import GlossItem
 
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "")
@@ -24,13 +25,42 @@ class Token(BaseModel):
     morphology: list[dict[str, str]] = Field(default_factory=list)
 
 
-class GlossRequest(BaseModel):
+class GlosserOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    tokens: list[Token]
     spoken_language: str
     signed_language: str
     glosser: Literal["rules", "simple", "gpt"] = "rules"
+
+
+class GlossRequest(GlosserOptions):
+    tokens: list[Token]
+
+
+class SourceToken(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    word: str
+    lemma: str
+    pos: str
+    morph: dict[str, str] = Field(default_factory=dict)
+
+
+class SenseSpan(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: str | int
+    start_token: StrictInt
+    end_token: StrictInt
+
+
+class Senses(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    tokens: list[SourceToken]
+    synsets: list[SenseSpan]
+    entities: list[SenseSpan]
+
+
+class SensesRequest(GlosserOptions):
+    senses: Senses
 
 
 class GlossResponse(BaseModel):
@@ -91,6 +121,15 @@ def tokens_to_gloss(request: GlossRequest, response: Response):
     response.headers["X-Model-Tag"] = MODEL_VERSION
     order = [[indexes[id(token)] for token in sentence] for sentence in sentences]
     return GlossResponse(sentences=[[request.tokens[index] for index in sentence] for sentence in order], indexes=order)
+
+
+@app.post("/senses-to-gloss", response_model=GlossResponse, response_model_exclude_unset=True)
+def senses_to_gloss(request: SensesRequest, response: Response):
+    try:
+        tokens = prepare_tokens(request.senses.model_dump(exclude_unset=True))
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return tokens_to_gloss(GlossRequest(tokens=tokens, **request.model_dump(exclude={"senses"})), response)
 
 
 @app.post("/gloss-to-pose", response_class=Response)

@@ -139,6 +139,14 @@ For model-based reordering, install `.[server,gpt]`, set `OPENAI_API_KEY` at run
 and send `"glosser": "gpt"`. This uses `gpt-5.6-luna` with reasoning disabled (override model with `OPENAI_MODEL`);
 only rules-approved omissions are allowed. Rules/simple need no API key.
 
+`POST /senses-to-gloss` accepts `senses` (the WSD document with `tokens`, `synsets`,
+and `entities`) plus the same language/glosser fields. It groups multiword spans
+before glossing and returns the same response. Indexes refer to grouped candidates;
+each candidate carries its original `start_token`/`end_token`, exact-span senses and
+entities, and `source` annotations for later lookup/fallback. Unknown words survive.
+Overlapping spans prefer the widest meaning (earlier on ties); constituent senses
+are never treated as senses of the whole phrase. No dictionary lookup happens here.
+
 `POST /gloss-to-pose` accepts already ordered `tokens` and the same language fields,
 returning binary `application/pose`. It uses the existing lookup and concatenation,
 excluding `pos: "PUNCT"`. Optional: `fingerspelling=true`, `anonymize=false`, `source`
