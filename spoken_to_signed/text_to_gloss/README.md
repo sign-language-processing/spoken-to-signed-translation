@@ -12,8 +12,26 @@ def text_to_gloss(text: str, language: str) -> List[Gloss]: ...
 def tokens_to_gloss(tokens: Gloss, language: str, signed_language: str) -> List[Gloss]: ...
 ```
 
-Both return sentences of `(word, gloss)` items. `tokens_to_gloss` must preserve every item exactly once, changing only
-their order.
+Both return sentences of `(word, gloss)` items. Token-based components return original item objects, without introducing
+or duplicating tokens; grammar components may omit items as well as reorder them.
+
+## `rules` and `gpt`
+
+Use `rules` for rule-based glossing or `gpt` for model-based glossing, including English → ASL (`en` → `ase`).
+The existing German/French text rules are unchanged. English text rules require the `spacy` extra.
+
+Both accept pre-tokenized input via `tokens_to_gloss(tokens, language="en", signed_language="ase", metadata=metadata)`.
+Each metadata entry supplies `pos` and optionally `morphology` (a list of feature dictionaries).
+The English/ASL rules drop articles and present-tense support auxiliaries and move short WH phrases in simple questions.
+They preserve unknown constructions and, without metadata, leave the tokens unchanged. Pre-tokenized rules currently
+support only English → ASL; they never retokenize or split multiword items.
+
+GPT chooses token indexes, with omissions limited to those allowed by the rules. Invalid indexes, duplicates,
+missing required tokens and cross-sentence moves are rejected. This compares ordering strategies under the same
+omission constraints, not unrestricted translation. Neither method implements full ASL grammar or nonmanuals.
+
+Install the `gpt` extra and set `OPENAI_API_KEY`. `OPENAI_MODEL` defaults to `gpt-4o-mini`;
+`OPENAI_BASE_URL` can point to a local OpenAI-compatible server (for example `http://localhost:1234/v1`).
 
 ## `nmt` component
 
