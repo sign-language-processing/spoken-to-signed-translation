@@ -56,7 +56,26 @@ def test_index_selection_preserves_identity_and_sends_optional_indexes(client, m
     assert all(actual is tokens[i] for actual, i in zip(result, [2, 3, 0, 4]))
     call = client.chat.completions.create.call_args.kwargs
     assert call["model"] == "openai/gpt-oss-20b"
-    assert json.loads(call["messages"][1]["content"])["optional_indexes"] == [1]
+    assert json.loads(call["messages"][-1]["content"])["optional_indexes"] == [1]
+
+
+def test_token_prompt_demonstrates_reordering_and_dropping_before_actual_input(client):
+    tokens = [GlossItem("Hello", "hello"), GlossItem("!", "!")]
+    respond(client, {"order": [0, 1]})
+    gpt.tokens_to_gloss(tokens, "en", "ase")
+    messages = client.chat.completions.create.call_args.kwargs["messages"]
+    assert [message["role"] for message in messages] == ["system", "user", "assistant", "user", "assistant", "user"]
+    expected = [["your", "name", "What", "?"], ["Yesterday", "she", "bought", "red", "car", "in", "London", "."]]
+    for offset, words in zip([1, 3], expected):
+        example = json.loads(messages[offset]["content"])
+        order = json.loads(messages[offset + 1]["content"])["order"]
+        example_tokens = [GlossItem(t["word"], t["gloss"]) for t in example["tokens"]]
+        required = set(range(len(example_tokens))) - set(example["optional_indexes"])
+        [selected] = gpt._select_tokens(example_tokens, order, required)
+        assert [token.word for token in selected] == words
+    actual = json.loads(messages[-1]["content"])
+    assert [token["word"] for token in actual["tokens"]] == ["Hello", "!"]
+    assert actual["optional_indexes"] == []
 
 
 @pytest.mark.parametrize(
