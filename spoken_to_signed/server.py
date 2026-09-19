@@ -1,11 +1,17 @@
 """HTTP adapters for pretokenized glossing and optional dictionary-based poses."""
 
 import os
+from contextlib import asynccontextmanager
+from functools import partial
+from hashlib import sha256
 from io import BytesIO
+from time import monotonic
 from typing import Literal, Optional, Union
 
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
+from starlette.concurrency import run_in_threadpool
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from spoken_to_signed.text_to_gloss.senses import senses_to_gloss as gloss_senses
 from spoken_to_signed.text_to_gloss.types import GlossItem
@@ -13,7 +19,41 @@ from spoken_to_signed.text_to_gloss.wordnet import WordNet, WordNetUnavailableEr
 
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "")
 semantics = WordNet(os.environ["WORDNET_URL"]) if os.environ.get("WORDNET_URL") else None
-app = FastAPI(title="Spoken-to-signed glossing")
+# Cache identity must distinguish semantic ordering from the offline fallback.
+if MODEL_VERSION:
+    MODEL_VERSION += "-" + sha256(os.environ.get("WORDNET_URL", "offline").encode()).hexdigest()[:12]
+
+
+class BodyLimit:
+    """Bound streamed bodies as well as requests with Content-Length."""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        size = 0
+
+        async def bounded_receive():
+            nonlocal size
+            message = await receive()
+            size += len(message.get("body", b""))
+            if size > 2 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="Request body exceeds 2 MiB")
+            return message
+
+        await self.app(scope, bounded_receive if scope["type"] == "http" else receive, send)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    if semantics:
+        # Reject a WordNet deployment without the pinned OMW resource at startup.
+        await run_in_threadpool(semantics.parents, "omw-en-15113229-n")
+    yield
+
+
+app = FastAPI(title="Spoken-to-signed glossing", lifespan=lifespan)
+app.add_middleware(BodyLimit)
 
 
 class Token(BaseModel):
@@ -52,10 +92,10 @@ class SynsetSpan(Span):
 
 class Senses(BaseModel):
     model_config = ConfigDict(extra="allow")
-    tokens: list[SourceToken]
-    synsets: list[SynsetSpan]
-    entities: list[SenseSpan]
-    sentences: list[Span]
+    tokens: list[SourceToken] = Field(max_length=1024)
+    synsets: list[SynsetSpan] = Field(max_length=1024)
+    entities: list[SenseSpan] = Field(max_length=1024)
+    sentences: list[Span] = Field(max_length=1024)
 
 
 class SensesRequest(BaseModel):
@@ -76,7 +116,7 @@ class GlossResponse(BaseModel):
 class PoseRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    tokens: list[Token] = Field(min_length=1)
+    tokens: list[Token] = Field(min_length=1, max_length=1024)
     spoken_language: str
     signed_language: str
     source: Optional[str] = None
@@ -108,7 +148,8 @@ def health(response: Response):
 @app.post("/senses-to-gloss", response_model=GlossResponse, response_model_exclude_unset=True)
 def senses_to_gloss(request: SensesRequest, response: Response):
     try:
-        result = gloss_senses(request.senses.model_dump(exclude_unset=True), semantics=semantics)
+        is_time = partial(semantics.is_time, deadline=monotonic() + 10) if semantics else None
+        result = gloss_senses(request.senses.model_dump(exclude_unset=True), semantics=is_time)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except WordNetUnavailableError as error:

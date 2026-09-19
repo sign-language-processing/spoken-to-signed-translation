@@ -36,7 +36,7 @@ def test_whole_time_phrase_and_provenance():
     original = deepcopy(doc)
     semantics = Mock()
     semantics.is_time.return_value = True
-    result = senses_to_gloss(doc, semantics=semantics)
+    result = senses_to_gloss(doc, semantics=semantics.is_time)
     assert result["indexes"] == [[2, 3, 0, 1, 4]]
     assert result["changes"] == [{"sentence": 0, "rule": "temporal-frame-first", "source_tokens": [2, 3]}]
     assert doc == original
@@ -47,13 +47,13 @@ def test_semantics_are_required_not_guessed_from_word():
     assert senses_to_gloss(time_document())["indexes"] == [[0, 1, 2, 3, 4]]
     semantics = Mock()
     semantics.is_time.return_value = False
-    assert senses_to_gloss(time_document(), semantics=semantics)["indexes"] == [[0, 1, 2, 3, 4]]
+    assert senses_to_gloss(time_document(), semantics=semantics.is_time)["indexes"] == [[0, 1, 2, 3, 4]]
 
 
 def test_atomic_time_phrase_moves_without_splitting():
     doc = time_document()
     doc["synsets"][0]["start_token"] = 2
-    result = senses_to_gloss(doc, semantics=Mock(is_time=lambda _: True))
+    result = senses_to_gloss(doc, semantics=lambda _: True)
     assert result["indexes"] == [[2, 0, 1, 3]]
     assert result["sentences"][0][0]["word"] == "next Tuesday"
 
@@ -68,7 +68,7 @@ def test_temporal_looking_entities_and_objects_are_not_frames(protection):
     else:
         doc["tokens"][3]["dep"] = "dobj"
     semantics = Mock(is_time=lambda _: True)
-    assert senses_to_gloss(doc, semantics=semantics)["changes"] == []
+    assert senses_to_gloss(doc, semantics=semantics.is_time)["changes"] == []
 
 
 @pytest.mark.parametrize("change", ["cycle", "cross-head", "missing-root", "missing-boundary", "overlap-boundary"])
@@ -147,3 +147,58 @@ def test_interrogative_subject_not_misread_as_object():
         ]
     )
     assert senses_to_gloss(doc)["indexes"] == [[0, 1, 4, 5]]
+
+
+@pytest.mark.parametrize(
+    ("aux", "lemma", "negative", "expected"),
+    [
+        ("do", "do", "not", [0, 2, 3, 4]),
+        ("does", "do", "n't", [0, 2, 3, 4]),
+        ("can", "can", "not", [0, 1, 2, 3, 4]),
+        ("did", "do", "not", [0, 1, 2, 3, 4]),
+    ],
+)
+def test_negation_keeps_scope_modality_and_past(aux, lemma, negative, expected):
+    doc = parsed(
+        [
+            ("I", "I", "PRON", "nsubj", 3),
+            (aux, lemma, "AUX", "aux", 3),
+            (negative, "not", "PART", "neg", 3),
+            ("go", "go", "VERB", "ROOT", 3),
+            (".", ".", "PUNCT", "punct", 3),
+        ]
+    )
+    if aux == "did":
+        doc["tokens"][1]["morph"] = {"Tense": "Past"}
+    assert senses_to_gloss(doc)["indexes"] == [expected]
+
+
+def test_negative_imperative():
+    doc = parsed(
+        [
+            ("Do", "do", "AUX", "aux", 2),
+            ("not", "not", "PART", "neg", 2),
+            ("go", "go", "VERB", "ROOT", 2),
+            ("!", "!", "PUNCT", "punct", 2),
+        ]
+    )
+    assert senses_to_gloss(doc)["indexes"] == [[1, 2, 3]]
+
+
+@pytest.mark.parametrize("dependency", ["acl", "parataxis", "csubjpass"])
+def test_embedded_clause_suppresses_reordering(dependency):
+    doc = time_document()
+    doc["tokens"][2].update(word="visiting", lemma="visit", pos="VERB", dep=dependency, head=0)
+    semantics = Mock(return_value=True)
+    result = senses_to_gloss(doc, semantics=semantics)
+    assert result["indexes"] == [[0, 1, 2, 3, 4]]
+    assert result["notes"] == [{"sentence": 0, "code": "complex-clause-order-preserved"}]
+    semantics.assert_not_called()
+
+
+def test_ambiguous_temporal_senses_abstain():
+    doc = time_document()
+    doc["synsets"].append({**doc["synsets"][0], "id": "other"})
+    semantics = Mock(return_value=True)
+    assert senses_to_gloss(doc, semantics=semantics)["indexes"] == [[0, 1, 2, 3, 4]]
+    semantics.assert_not_called()

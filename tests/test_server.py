@@ -128,3 +128,16 @@ def test_pose_settings_are_request_local(monkeypatch):
     assert with_fallback is not without_fallback
     assert with_fallback.backup is not None
     assert without_fallback.backup is None
+
+
+def test_request_limits(client):
+    body = senses_request()
+    body["senses"]["tokens"] *= 1025
+    assert client.post("/senses-to-gloss", json=body).status_code == 422
+    assert client.post("/senses-to-gloss", content=b" " * (2 * 1024 * 1024 + 1)).status_code == 413
+
+
+def test_sentence_metadata_survives_flattening(client):
+    result = client.post("/senses-to-gloss", json=senses_request()).json()
+    assert result["sentences"][0][0]["sentence"] == 0
+    assert result["sentences"][0][0]["notes"] == ["temporal-semantics-unavailable"]

@@ -66,3 +66,27 @@ def test_ids_cannot_replace_the_configured_host(monkeypatch):
     monkeypatch.setattr(wordnet, "urlopen", fetch)
     assert not wordnet.WordNet("http://wordnet").is_time("https://other/?secret")
     assert urls == ["http://wordnet/lexicons/omw-en:1.4/synsets/https%3A%2F%2Fother%2F%3Fsecret"]
+
+
+def test_shared_deadline_bounds_multiple_traversals(monkeypatch):
+    clock = [0.0]
+    monkeypatch.setattr(wordnet, "monotonic", lambda: clock[0])
+    wn = wordnet.WordNet("http://wordnet")
+
+    def parents(synset):
+        clock[0] += 6
+        return ("omw-en-15113229-n",)
+
+    monkeypatch.setattr(wn, "parents", parents)
+    assert wn.is_time("first", deadline=10)
+    with pytest.raises(wordnet.WordNetUnavailableError, match="time budget"):
+        wn.is_time("second", deadline=10)
+
+
+def test_missing_pinned_resource_fails(monkeypatch):
+    def fetch(url, timeout):
+        raise HTTPError(url, 404, "not found", {}, None)
+
+    monkeypatch.setattr(wordnet, "urlopen", fetch)
+    with pytest.raises(wordnet.WordNetUnavailableError):
+        wordnet.WordNet("http://wordnet").parents("omw-en-15113229-n")

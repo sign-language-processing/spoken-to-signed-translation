@@ -29,7 +29,7 @@ def _protected(item):
     )
 
 
-def _drop(item, tokens, root, question):
+def _drop(item, tokens, children, root, question):
     # A multiword meaning or named entity is indivisible, even if it contains "the".
     if item["start_token"] != item["end_token"] or _protected(item):
         return False
@@ -37,11 +37,11 @@ def _drop(item, tokens, root, question):
     token = tokens[index]
     if token["lemma"] == "be":
         # Preserve existential, passive, progressive and elliptical constructions.
-        if token["dep"] != "ROOT" or any(t["dep"] == "expl" and t["head"] == index for t in tokens):
+        if token["dep"] != "ROOT" or any(t["dep"] == "expl" for t in children.get(index, [])):
             return False
-        if not any(t["head"] == index and t["dep"] in {"attr", "acomp", "prep", "advmod"} for t in tokens):
+        if not any(t["dep"] in {"attr", "acomp", "prep", "advmod"} for t in children.get(index, [])):
             return False
-    negatives = [t["word"] for t in tokens if t["head"] == token["head"] and t["dep"] == "neg"]
+    negatives = [t["word"] for t in children.get(token["head"], []) if t["dep"] == "neg"]
     return _omit_asl(
         GlossItem(item["word"], token["lemma"]),
         item,
@@ -77,7 +77,7 @@ def _front_time(order, tokens, members, root, semantics, edits):
         # duration introduced by "for", or time inside a subordinate clause.
         if token["head"] != root or token["dep"] not in {"npadvmod", "advmod"}:
             continue
-        if not any(semantics.is_time(s["id"]) for s in item["synsets"]):
+        if len(item["synsets"]) != 1 or not semantics(item["synsets"][0]["id"]):
             continue
         positions = _subtree(head, tokens, members)
         if (
@@ -144,7 +144,7 @@ def gloss_sentence(items, tokens, semantics=None):
     root = next(i for i in members if tokens[i]["dep"] == "ROOT")
     question = any(tokens[i]["word"] == "?" for i in members)
     complex_clause = any(
-        tokens[i]["dep"] in {"ccomp", "xcomp", "advcl", "relcl", "csubj"}
+        tokens[i]["dep"] in {"ccomp", "xcomp", "advcl", "relcl", "csubj", "csubjpass", "acl", "parataxis"}
         or (tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"})
         for i in members
     )
@@ -154,9 +154,12 @@ def gloss_sentence(items, tokens, semantics=None):
     if question:
         notes.append("question-nonmanuals-not-realized")
     edits = []
+    children = {}
+    for i in members:
+        children.setdefault(tokens[i]["head"], []).append(tokens[i])
     order = []
     for item in items:
-        if _drop(item, tokens, root, question):
+        if _drop(item, tokens, children, root, question):
             edits.append({"rule": "omit-function-word", "source_tokens": [item["start_token"]]})
         else:
             order.append(item)

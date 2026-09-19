@@ -139,13 +139,20 @@ Returns `sentences` in **your name What ?** order and `indexes: [[2, 3, 0, 4]]`,
 plus an auditable `changes` list and `notes` describing conservative fallbacks.
 Indexes refer to grouped candidates, not raw tokens. Each candidate carries its
 original inclusive `start_token`/`end_token`, exact-span senses/entities, morphology,
-and `source` annotations for lookup/fallback. Unknown words survive for fingerspelling.
+and `source` annotations for lookup/fallback. `sentence` and `notes` also travel with
+each candidate so flattening does not erase boundaries or limitations.
+Unknown words survive for fingerspelling.
 Overlapping spans prefer the widest meaning (earlier on ties); constituent senses
 are never treated as senses of the whole phrase. No dictionary lookup happens here.
 WSD sentence boundaries are authoritative; malformed trees/spans return 422.
 Without `WORDNET_URL`, temporal ordering is skipped with a note. Configured WordNet
 failures return 503, not a silently different translation. Pin the WordNet deployment
 alongside this service for reproducibility. TODO: batch API and batch semantic lookups.
+The service checks the pinned OMW resource at startup. Requests are limited to 2 MiB
+and 1,024 tokens/annotations. All semantic traversals in a request share a 10-second
+budget, checked between lookups; an in-flight lookup has a 5-second socket timeout.
+This bounds ordinary slow-service chains, not adversarial slow-drip responses;
+WordNet must be a trusted internal service.
 
 The Python entry point is `spoken_to_signed.text_to_gloss.senses.senses_to_gloss`.
 Rules produce a **lexical plan, not fluent ASL**: nonmanuals, spatial grammar and
@@ -169,11 +176,12 @@ docker run --rm -p 8080:8080 spoken-to-signed
 ```
 
 Releases publish `ghcr.io/sign-language-processing/spoken-to-signed-translation:<tag>`.
-The image includes PostgreSQL/GCS/GPT dependencies. `PORT` defaults to 8080; Hypercorn
+The image includes PostgreSQL/GCS dependencies. `PORT` defaults to 8080; Hypercorn
 supports HTTP/1.1 and HTTP/2 (h2c). Configure HTTP/2 upstream in the gateway too.
 `/health` returns `version`; successful API responses include `X-Model-Tag`, set by
 `MODEL_VERSION` (baked into release images), with a suffix identifying the configured
-GPT model and base URL. Deploy internally; auth and caching
+WordNet URL or offline mode. Changing WordNet resources at the same URL requires a
+new `MODEL_VERSION` to invalidate downstream caches. Deploy internally; auth and caching
 belong to the gateway. Caller routing and the old caption-maintenance job still need
 migrating before retiring the function in `models`.
 

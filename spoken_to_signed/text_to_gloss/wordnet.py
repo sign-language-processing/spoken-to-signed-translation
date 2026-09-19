@@ -1,7 +1,10 @@
 """Small semantic adapter to the existing WordNet API; no word re-disambiguation."""
 
+from __future__ import annotations
+
 import json
 from functools import lru_cache
+from time import monotonic
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import urlopen
@@ -29,22 +32,28 @@ class WordNet:
         url = f"{self.url}/lexicons/omw-en:1.4/synsets/{quote(synset, safe='')}"
         try:
             with urlopen(url, timeout=5) as response:
-                relations = json.load(response)["data"]["relationships"]
+                payload = response.read(1024 * 1024 + 1)
+                if len(payload) > 1024 * 1024:
+                    raise WordNetUnavailableError("WordNet response exceeded size limit")
+                relations = json.loads(payload)["data"]["relationships"]
             return tuple(
                 item["id"]
                 for relation in ("hypernym", "instance_hypernym")
                 for item in relations.get(relation, {}).get("data", [])
             )
         except HTTPError as error:
-            if error.code == 404:
+            if error.code == 404 and synset not in TIME_ROOTS | TIME_ADVERBS:
                 return ()  # A valid but unsupported sense has no known ancestry.
             raise WordNetUnavailableError("WordNet semantic lookup failed") from error
         except (URLError, TimeoutError, ValueError, KeyError, TypeError) as error:
             raise WordNetUnavailableError("WordNet semantic lookup failed") from error
 
-    def is_time(self, synset: str) -> bool:
+    def is_time(self, synset: str, *, deadline: float | None = None) -> bool:
+        deadline = deadline if deadline is not None else monotonic() + 10
         pending, seen = [synset], set()
         while pending:
+            if monotonic() >= deadline:
+                raise WordNetUnavailableError("WordNet semantic lookup exceeded time budget")
             current = pending.pop()
             if current in TIME_ROOTS or current in TIME_ADVERBS:
                 return True
