@@ -1,22 +1,18 @@
 """HTTP adapters for pretokenized glossing and optional dictionary-based poses."""
 
 import os
-from hashlib import sha256
 from io import BytesIO
 from typing import Literal, Optional, Union
 
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
-from spoken_to_signed.text_to_gloss import rules, simple
-from spoken_to_signed.text_to_gloss.senses import prepare_tokens
+from spoken_to_signed.text_to_gloss.senses import senses_to_gloss as gloss_senses
 from spoken_to_signed.text_to_gloss.types import GlossItem
+from spoken_to_signed.text_to_gloss.wordnet import WordNet, WordNetUnavailableError
 
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "")
-if MODEL_VERSION:
-    # A local model override must not attest the production GPT configuration.
-    model_config = (os.environ.get("OPENAI_MODEL", "gpt-5.6-luna"), os.environ.get("OPENAI_BASE_URL", ""))
-    MODEL_VERSION += "-" + sha256(repr(model_config).encode()).hexdigest()[:12]
+semantics = WordNet(os.environ["WORDNET_URL"]) if os.environ.get("WORDNET_URL") else None
 app = FastAPI(title="Spoken-to-signed glossing")
 
 
@@ -30,48 +26,51 @@ class Token(BaseModel):
     morphology: list[dict[str, str]] = Field(default_factory=list)
 
 
-class GlosserOptions(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    spoken_language: str
-    signed_language: str
-    glosser: Literal["rules", "simple", "gpt"] = "rules"
-
-
-class GlossRequest(GlosserOptions):
-    tokens: list[Token]
-
-
 class SourceToken(BaseModel):
     model_config = ConfigDict(extra="allow")
     word: str
     lemma: str
     pos: str
+    dep: str
+    head: StrictInt
     morph: dict[str, str] = Field(default_factory=dict)
 
 
-class SenseSpan(BaseModel):
+class Span(BaseModel):
     model_config = ConfigDict(extra="allow")
-    id: Union[str, int]
     start_token: StrictInt
     end_token: StrictInt
+
+
+class SenseSpan(Span):
+    id: Union[str, int]
+
+
+class SynsetSpan(Span):
+    id: str
 
 
 class Senses(BaseModel):
     model_config = ConfigDict(extra="allow")
     tokens: list[SourceToken]
-    synsets: list[SenseSpan]
+    synsets: list[SynsetSpan]
     entities: list[SenseSpan]
+    sentences: list[Span]
 
 
-class SensesRequest(GlosserOptions):
+class SensesRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    spoken_language: Literal["en"]
+    signed_language: Literal["ase"]
     senses: Senses
 
 
 class GlossResponse(BaseModel):
     sentences: list[list[Token]]
-    # Original input-item positions, grouped exactly like sentences.
+    # Positions in prepare_tokens(senses), not in the raw WSD token list.
     indexes: list[list[int]]
+    changes: list[dict]
+    notes: list[dict]
 
 
 class PoseRequest(BaseModel):
@@ -106,35 +105,16 @@ def health(response: Response):
     return {"status": "healthy", "version": MODEL_VERSION}
 
 
-@app.post("/tokens-to-gloss", response_model=GlossResponse, response_model_exclude_unset=True)
-def tokens_to_gloss(request: GlossRequest, response: Response):
-    tokens = [GlossItem(token.word, token.gloss) for token in request.tokens]
-    indexes = {id(token): index for index, token in enumerate(tokens)}
-    if request.glosser == "gpt":
-        from spoken_to_signed.text_to_gloss import gpt as glosser
-    else:
-        glosser = {"rules": rules, "simple": simple}[request.glosser]
-    try:
-        sentences = glosser.tokens_to_gloss(
-            tokens,
-            language=request.spoken_language,
-            signed_language=request.signed_language,
-            metadata=[token.model_dump(include={"pos", "morphology"}) for token in request.tokens],
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
-    response.headers["X-Model-Tag"] = MODEL_VERSION
-    order = [[indexes[id(token)] for token in sentence] for sentence in sentences]
-    return GlossResponse(sentences=[[request.tokens[index] for index in sentence] for sentence in order], indexes=order)
-
-
 @app.post("/senses-to-gloss", response_model=GlossResponse, response_model_exclude_unset=True)
 def senses_to_gloss(request: SensesRequest, response: Response):
     try:
-        tokens = prepare_tokens(request.senses.model_dump(exclude_unset=True))
+        result = gloss_senses(request.senses.model_dump(exclude_unset=True), semantics=semantics)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    return tokens_to_gloss(GlossRequest(tokens=tokens, **request.model_dump(exclude={"senses"})), response)
+    except WordNetUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    response.headers["X-Model-Tag"] = MODEL_VERSION
+    return result
 
 
 @app.post("/gloss-to-pose", response_class=Response)

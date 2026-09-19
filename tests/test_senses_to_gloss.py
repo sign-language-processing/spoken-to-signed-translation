@@ -86,6 +86,11 @@ def test_service_reorders_complete_candidates_and_handles_empty_or_invalid_sense
     for token, pos in zip(senses["tokens"], ["PRON", "AUX", "PRON", "NOUN", "PUNCT"]):
         token["pos"] = pos
     senses["tokens"][1]["lemma"] = "be"
+    senses["sentences"] = [{"start_token": 0, "end_token": 4}]
+    for token, (dep, head) in zip(
+        senses["tokens"], [("attr", 1), ("ROOT", 1), ("poss", 3), ("nsubj", 1), ("punct", 1)]
+    ):
+        token.update(dep=dep, head=head)
     with TestClient(app) as client:
 
         def send(value):
@@ -104,6 +109,11 @@ def test_service_reorders_complete_candidates_and_handles_empty_or_invalid_sense
         assert result["indexes"] == [[2, 3, 0, 4]]
         assert [item["word"] for item in result["sentences"][0]] == ["your", "name", "What", "?"]
         assert result["sentences"][0][1]["synsets"] == senses["synsets"]
-        assert send(document([])).json() == {"sentences": [[]], "indexes": [[]]}
+        assert send({**document([]), "sentences": []}).json() == {
+            "sentences": [],
+            "indexes": [],
+            "changes": [],
+            "notes": [],
+        }
         assert send({}).status_code == 422
         assert send(document(["a"], [span(0, 2)])).status_code == 422

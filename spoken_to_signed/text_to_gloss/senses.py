@@ -28,6 +28,12 @@ def prepare_tokens(document: dict) -> list[dict]:
     while start < len(source):
         end = selected.get(start, start)
         parts = source[start : end + 1]
+        heads = [
+            i
+            for i in range(start, end + 1)
+            if source[i].get("dep") == "ROOT" or ("head" in source[i] and not start <= source[i]["head"] <= end)
+        ]
+        head = heads[0] if len(heads) == 1 else end
         matches = {
             key: [item for item in document[key] if (item["start_token"], item["end_token"]) == (start, end)]
             for key in ("synsets", "entities")
@@ -37,7 +43,7 @@ def prepare_tokens(document: dict) -> list[dict]:
             {
                 "word": " ".join(part["word"] for part in parts),
                 "gloss": expression or " ".join(part["lemma"] for part in parts),
-                "pos": parts[-1]["pos"],
+                "pos": source[head]["pos"],
                 "morphology": [part.get("morph", {}) for part in parts],
                 "start_token": start,
                 "end_token": end,
@@ -66,28 +72,34 @@ def _validate_syntax(document):
         start, end = sentence["start_token"], sentence["end_token"]
         if type(start) is not int or type(end) is not int or start != next_start or not start <= end < len(tokens):
             raise ValueError("sentences must partition the tokens in order (inclusive boundaries)")
-        roots = []
-        for index in range(start, end + 1):
-            token = tokens[index]
-            head = token["head"]
-            if type(head) is not int or not start <= head <= end or not token["dep"]:
-                raise ValueError("Every token needs a dependency and a head within its sentence")
-            if token["dep"] == "ROOT":
-                roots.append(index)
-                if head != index:
-                    raise ValueError("A ROOT must point to itself")
-        if len(roots) != 1:
-            raise ValueError("Each sentence needs exactly one dependency ROOT")
-        for index in range(start, end + 1):
-            visited = set()
-            while index != roots[0]:
-                if index in visited:
-                    raise ValueError("Dependency heads must form a tree, not a cycle")
-                visited.add(index)
-                index = tokens[index]["head"]
+        _validate_tree(tokens, start, end)
         next_start = end + 1
     if next_start != len(tokens):
         raise ValueError("sentences must cover every token; use a WSD release exposing syntax")
+
+
+def _validate_tree(tokens, start, end):
+    roots = []
+    for index in range(start, end + 1):
+        token = tokens[index]
+        head = token["head"]
+        if type(head) is not int or not start <= head <= end or not token["dep"]:
+            raise ValueError("Every token needs a dependency and a head within its sentence")
+        if token["dep"] == "ROOT":
+            roots.append(index)
+            if head != index:
+                raise ValueError("A ROOT must point to itself")
+    if len(roots) != 1:
+        raise ValueError("Each sentence needs exactly one dependency ROOT")
+    connected = {roots[0]}
+    for index in range(start, end + 1):
+        visited = set()
+        while index not in connected:
+            if index in visited:
+                raise ValueError("Dependency heads must form a tree, not a cycle")
+            visited.add(index)
+            index = tokens[index]["head"]
+        connected.update(visited)
 
 
 def senses_to_gloss(document: dict, *, semantics=None) -> dict:
@@ -109,5 +121,9 @@ def senses_to_gloss(document: dict, *, semantics=None) -> dict:
         sentences.append(ordered)
         changes.extend({"sentence": sentence_index, **edit} for edit in edits)
         notes.extend({"sentence": sentence_index, "code": code} for code in warnings)
-    return {"sentences": sentences, "indexes": [[positions[id(c)] for c in s] for s in sentences],
-            "changes": changes, "notes": notes}
+    return {
+        "sentences": sentences,
+        "indexes": [[positions[id(c)] for c in s] for s in sentences],
+        "changes": changes,
+        "notes": notes,
+    }

@@ -8,18 +8,27 @@ from spoken_to_signed.text_to_gloss.senses import senses_to_gloss
 
 def parsed(rows, synsets=(), entities=(), sentences=None):
     """Explicit syntax isolates rule tests from parser/model changes."""
-    return {"tokens": [{"word": w, "lemma": lemma, "pos": pos, "dep": dep, "head": head}
-                       for w, lemma, pos, dep, head in rows],
-            "synsets": list(synsets), "entities": list(entities),
-            "sentences": sentences if sentences is not None else [{"start_token": 0, "end_token": len(rows) - 1}]}
+    return {
+        "tokens": [
+            {"word": w, "lemma": lemma, "pos": pos, "dep": dep, "head": head} for w, lemma, pos, dep, head in rows
+        ],
+        "synsets": list(synsets),
+        "entities": list(entities),
+        "sentences": sentences if sentences is not None else [{"start_token": 0, "end_token": len(rows) - 1}],
+    }
 
 
 def time_document():
-    return parsed([
-        ("We", "we", "PRON", "nsubj", 1), ("meet", "meet", "VERB", "ROOT", 1),
-        ("next", "next", "ADJ", "amod", 3), ("Tuesday", "tuesday", "PROPN", "npadvmod", 1),
-        (".", ".", "PUNCT", "punct", 1)],
-        [{"id": "omw-en-15164105-n", "start_token": 3, "end_token": 3}])
+    return parsed(
+        [
+            ("We", "we", "PRON", "nsubj", 1),
+            ("meet", "meet", "VERB", "ROOT", 1),
+            ("next", "next", "ADJ", "amod", 3),
+            ("Tuesday", "tuesday", "PROPN", "npadvmod", 1),
+            (".", ".", "PUNCT", "punct", 1),
+        ],
+        [{"id": "omw-en-15164105-n", "start_token": 3, "end_token": 3}],
+    )
 
 
 def test_whole_time_phrase_and_provenance():
@@ -76,15 +85,21 @@ def test_invalid_syntax_is_rejected(change):
         doc["sentences"] = []
     else:
         doc["sentences"] *= 2
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="tree|head|ROOT|sentences"):
         senses_to_gloss(doc)
 
 
 def test_boundaries_are_authoritative_not_punctuation():
-    doc = parsed([("Dr.", "dr.", "PROPN", "compound", 1), ("Smith", "smith", "PROPN", "ROOT", 1),
-                  (".", ".", "PUNCT", "punct", 1), ("Go", "go", "VERB", "ROOT", 3),
-                  ("!", "!", "PUNCT", "punct", 3)],
-                 sentences=[{"start_token": 0, "end_token": 2}, {"start_token": 3, "end_token": 4}])
+    doc = parsed(
+        [
+            ("Dr.", "dr.", "PROPN", "compound", 1),
+            ("Smith", "smith", "PROPN", "ROOT", 1),
+            (".", ".", "PUNCT", "punct", 1),
+            ("Go", "go", "VERB", "ROOT", 3),
+            ("!", "!", "PUNCT", "punct", 3),
+        ],
+        sentences=[{"start_token": 0, "end_token": 2}, {"start_token": 3, "end_token": 4}],
+    )
     assert senses_to_gloss(doc)["indexes"] == [[0, 1, 2], [3, 4]]
     doc["entities"] = [{"id": "Q1", "start_token": 1, "end_token": 3}]
     with pytest.raises(ValueError, match="sentence boundaries"):
@@ -92,11 +107,43 @@ def test_boundaries_are_authoritative_not_punctuation():
 
 
 def test_quoted_punctuation_can_stay_inside_a_single_entity():
-    doc = parsed([("Stop", "stop", "VERB", "ROOT", 0), ("!", "!", "PUNCT", "punct", 0)],
-                 entities=[{"id": "Q1", "start_token": 0, "end_token": 1}])
+    doc = parsed(
+        [("Stop", "stop", "VERB", "ROOT", 0), ("!", "!", "PUNCT", "punct", 0)],
+        entities=[{"id": "Q1", "start_token": 0, "end_token": 1}],
+    )
     assert senses_to_gloss(doc)["indexes"] == [[0]]
 
 
 def test_unknown_words_are_not_dropped():
     doc = parsed([("Blorf", "blorf", "PROPN", "nsubj", 1), ("dances", "dance", "VERB", "ROOT", 1)])
     assert senses_to_gloss(doc)["indexes"] == [[0, 1]]
+
+
+def test_entity_subject_can_move_as_a_whole():
+    doc = parsed(
+        [
+            ("Can", "can", "AUX", "aux", 3),
+            ("Ada", "ada", "PROPN", "compound", 2),
+            ("Lovelace", "lovelace", "PROPN", "nsubj", 3),
+            ("help", "help", "VERB", "ROOT", 3),
+            ("?", "?", "PUNCT", "punct", 3),
+        ],
+        entities=[{"id": "Q7259", "start_token": 1, "end_token": 2}],
+    )
+    result = senses_to_gloss(doc)
+    assert result["indexes"] == [[1, 0, 2, 3]]
+    assert result["sentences"][0][0]["word"] == "Ada Lovelace"
+
+
+def test_interrogative_subject_not_misread_as_object():
+    doc = parsed(
+        [
+            ("Which", "which", "DET", "det", 1),
+            ("student", "student", "NOUN", "nsubj", 2),
+            ("is", "be", "AUX", "ROOT", 2),
+            ("the", "the", "DET", "det", 4),
+            ("winner", "winner", "NOUN", "attr", 2),
+            ("?", "?", "PUNCT", "punct", 2),
+        ]
+    )
+    assert senses_to_gloss(doc)["indexes"] == [[0, 1, 4, 5]]

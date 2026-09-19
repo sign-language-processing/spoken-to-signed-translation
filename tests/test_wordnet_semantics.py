@@ -9,10 +9,13 @@ from spoken_to_signed.text_to_gloss import wordnet
 
 def test_hypernyms_instances_and_cycles(monkeypatch):
     calls = []
-    graph = {"day": {"hypernym": {"data": [{"id": "period"}]}},
-             "period": {"hypernym": {"data": [{"id": "omw-en-15113229-n"}]}},
-             "holiday": {"instance_hypernym": {"data": [{"id": "day"}]}},
-             "loop": {"hypernym": {"data": [{"id": "loop"}]}}, "other": {}}
+    graph = {
+        "day": {"hypernym": {"data": [{"id": "period"}]}},
+        "period": {"hypernym": {"data": [{"id": "omw-en-15113229-n"}]}},
+        "holiday": {"instance_hypernym": {"data": [{"id": "day"}]}},
+        "loop": {"hypernym": {"data": [{"id": "loop"}]}},
+        "other": {},
+    }
 
     def fetch(url, timeout):
         assert timeout == 5
@@ -40,7 +43,7 @@ def test_failed_requests_are_not_cached(monkeypatch):
     monkeypatch.setattr(wordnet, "urlopen", fetch)
     wn = wordnet.WordNet("http://wordnet")
     for _ in range(2):
-        with pytest.raises(wordnet.WordNetUnavailable):
+        with pytest.raises(wordnet.WordNetUnavailableError, match="lookup failed"):
             wn.is_time("example")
     assert len(calls) == 2
 

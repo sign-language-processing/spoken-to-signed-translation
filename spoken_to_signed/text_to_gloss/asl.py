@@ -24,8 +24,9 @@ def _subtree(root, tokens, members):
 
 
 def _protected(item):
-    return bool(item["entities"]) or any(t.get("ent_type") not in {None, "", "DATE", "TIME"}
-                                         for t in item["source"]["tokens"])
+    return bool(item["entities"]) or any(
+        t.get("ent_type") not in {None, "", "DATE", "TIME"} for t in item["source"]["tokens"]
+    )
 
 
 def _drop(item, tokens, root, question):
@@ -41,9 +42,12 @@ def _drop(item, tokens, root, question):
         if not any(t["head"] == index and t["dep"] in {"attr", "acomp", "prep", "advmod"} for t in tokens):
             return False
     negatives = [t["word"] for t in tokens if t["head"] == token["head"] and t["dep"] == "neg"]
-    return _omit_asl(GlossItem(item["word"], token["lemma"]), item,
-                     following=negatives[0] if negatives else None,
-                     question=question and token["head"] == root and token["dep"] == "aux")
+    return _omit_asl(
+        GlossItem(item["word"], token["lemma"]),
+        item,
+        following=negatives[0] if negatives else None,
+        question=question and token["head"] == root and token["dep"] == "aux",
+    )
 
 
 def _phrase_items(positions, order):
@@ -54,7 +58,7 @@ def _phrase_items(positions, order):
     for item in order:
         span = set(range(item["start_token"], item["end_token"] + 1))
         if span & positions:
-            if not span <= positions or _protected(item):
+            if not span <= positions:
                 return []
             selected.append(item)
     return selected
@@ -76,20 +80,31 @@ def _front_time(order, tokens, members, root, semantics, edits):
         if not any(semantics.is_time(s["id"]) for s in item["synsets"]):
             continue
         positions = _subtree(head, tokens, members)
-        if token["pos"] == "NOUN" and len(positions) == 1 and not any(
-            tokens[p]["head"] == root and tokens[p]["dep"] in {"dobj", "obj"} for p in members
+        if (
+            token["pos"] == "NOUN"
+            and len(positions) == 1
+            and not any(tokens[p]["head"] == root and tokens[p]["dep"] in {"dobj", "obj"} for p in members)
         ):
             continue  # Bare temporal nouns can be objects despite an npadvmod parse.
-        if any(tokens[p]["dep"] not in {"npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case"}
-               or tokens[p]["pos"] in {"VERB", "AUX", "PUNCT"} for p in positions):
+        if any(
+            tokens[p]["dep"] not in {"npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case"}
+            or tokens[p]["pos"] in {"VERB", "AUX", "PUNCT"}
+            for p in positions
+        ):
             continue
         phrase = _phrase_items(positions, order)
+        if any(_protected(i) for i in phrase):
+            continue
         front.extend(i for i in phrase if not any(i is seen for seen in front))
     front_ids = {id(i) for i in front}
     result = front + [i for i in order if id(i) not in front_ids]
     if result != order:
-        edits.append({"rule": "temporal-frame-first", "source_tokens": sorted(
-            p for i in front for p in range(i["start_token"], i["end_token"] + 1))})
+        edits.append(
+            {
+                "rule": "temporal-frame-first",
+                "source_tokens": sorted(p for i in front for p in range(i["start_token"], i["end_token"] + 1)),
+            }
+        )
     return result
 
 
@@ -101,9 +116,14 @@ def _subject_first(order, tokens, members, root, edits):
     if not phrase:
         return order
     first = phrase[0]["start_token"]
-    auxiliaries = [i for i in order if i["end_token"] < first and i["start_token"] == i["end_token"]
-                   and tokens[i["start_token"]]["head"] == root
-                   and tokens[i["start_token"]]["dep"] == "aux"]
+    auxiliaries = [
+        i
+        for i in order
+        if i["end_token"] < first
+        and i["start_token"] == i["end_token"]
+        and tokens[i["start_token"]]["head"] == root
+        and tokens[i["start_token"]]["dep"] == "aux"
+    ]
     if not auxiliaries:
         return order
     aux_ids = {id(i) for i in auxiliaries}
@@ -123,8 +143,11 @@ def gloss_sentence(items, tokens, semantics=None):
     members = set(range(items[0]["start_token"], items[-1]["end_token"] + 1))
     root = next(i for i in members if tokens[i]["dep"] == "ROOT")
     question = any(tokens[i]["word"] == "?" for i in members)
-    complex_clause = any(tokens[i]["dep"] in {"ccomp", "xcomp", "advcl", "relcl", "csubj"}
-                         or (tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"}) for i in members)
+    complex_clause = any(
+        tokens[i]["dep"] in {"ccomp", "xcomp", "advcl", "relcl", "csubj"}
+        or (tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"})
+        for i in members
+    )
     notes = ["complex-clause-order-preserved"] if complex_clause else []
     if semantics is None:
         notes.append("temporal-semantics-unavailable")
@@ -142,10 +165,20 @@ def gloss_sentence(items, tokens, semantics=None):
         if question:
             order = _subject_first(order, tokens, members, root, edits)
         length = _asl_question_length([GlossItem(i["word"], i["gloss"]) for i in items], items)
+        if any(
+            tokens[p]["head"] == root and tokens[p]["dep"] in {"nsubj", "nsubjpass", "csubj"}
+            for i in items[:length]
+            for p in range(i["start_token"], i["end_token"] + 1)
+        ):
+            length = 0  # Do not mistake an interrogative subject for an object WH phrase.
         prefix_ids = {id(i) for i in items[:length]}
         prefix = [i for i in order if id(i) in prefix_ids]
         if prefix:
             order = [i for i in order[:-1] if id(i) not in prefix_ids] + prefix + order[-1:]
-            edits.append({"rule": "wh-final", "source_tokens": sorted(
-                p for i in prefix for p in range(i["start_token"], i["end_token"] + 1))})
+            edits.append(
+                {
+                    "rule": "wh-final",
+                    "source_tokens": sorted(p for i in prefix for p in range(i["start_token"], i["end_token"] + 1)),
+                }
+            )
     return order, edits, notes

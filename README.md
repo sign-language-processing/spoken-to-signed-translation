@@ -112,40 +112,46 @@ pip install '.[server]'
 MODEL_VERSION=local hypercorn spoken_to_signed.server:app --bind 0.0.0.0:8080
 ```
 
-`POST /tokens-to-gloss` accepts atomic words/spans with POS and optional morphology:
+`POST /senses-to-gloss` accepts an unmodified WSD document (including dependency
+heads and sentence boundaries). English → ASL rules run without an LLM or API key.
+Set `WORDNET_URL` to the WordNet API for semantic time-frame ordering.
 
 ```json
 {
   "spoken_language": "en",
   "signed_language": "ase",
-  "tokens": [
-    {"word": "What", "gloss": "what", "pos": "PRON"},
-    {"word": "is", "gloss": "be", "pos": "AUX"},
-    {"word": "your", "gloss": "your", "pos": "PRON"},
-    {"word": "name", "gloss": "name", "pos": "NOUN"},
-    {"word": "?", "gloss": "?", "pos": "PUNCT"}
-  ]
+  "senses": {
+    "tokens": [
+      {"word": "What", "lemma": "what", "pos": "PRON", "dep": "attr", "head": 1},
+      {"word": "is", "lemma": "be", "pos": "AUX", "dep": "ROOT", "head": 1},
+      {"word": "your", "lemma": "your", "pos": "PRON", "dep": "poss", "head": 3},
+      {"word": "name", "lemma": "name", "pos": "NOUN", "dep": "nsubj", "head": 1},
+      {"word": "?", "lemma": "?", "pos": "PUNCT", "dep": "punct", "head": 1}
+    ],
+    "synsets": [],
+    "entities": [],
+    "sentences": [{"start_token": 0, "end_token": 4}]
+  }
 }
 ```
 
-Returns `sentences` containing the original objects in **your name what ?** order,
-plus `indexes: [[2, 3, 0, 4]]`. All annotations pass through unchanged; no merging
-in the caller. `glosser` is `rules` (default, English → ASL) or `simple` (identity).
-`morphology` is a list of spaCy feature dictionaries, one per source token in a span.
-These are mechanical rules, not fluent ASL. Unknown words remain for downstream
-fingerspelling; punctuation remains for sentence boundaries. TODO: batch API.
-
-For model-based reordering, install `.[server,gpt]`, set `OPENAI_API_KEY` at runtime,
-and send `"glosser": "gpt"`. This uses `gpt-5.6-luna` with reasoning disabled (override model with `OPENAI_MODEL`);
-only rules-approved omissions are allowed. Rules/simple need no API key.
-
-`POST /senses-to-gloss` accepts `senses` (the WSD document with `tokens`, `synsets`,
-and `entities`) plus the same language/glosser fields. It groups multiword spans
-before glossing and returns the same response. Indexes refer to grouped candidates;
-each candidate carries its original `start_token`/`end_token`, exact-span senses and
-entities, and `source` annotations for later lookup/fallback. Unknown words survive.
+Returns `sentences` in **your name What ?** order and `indexes: [[2, 3, 0, 4]]`,
+plus an auditable `changes` list and `notes` describing conservative fallbacks.
+Indexes refer to grouped candidates, not raw tokens. Each candidate carries its
+original inclusive `start_token`/`end_token`, exact-span senses/entities, morphology,
+and `source` annotations for lookup/fallback. Unknown words survive for fingerspelling.
 Overlapping spans prefer the widest meaning (earlier on ties); constituent senses
 are never treated as senses of the whole phrase. No dictionary lookup happens here.
+WSD sentence boundaries are authoritative; malformed trees/spans return 422.
+Without `WORDNET_URL`, temporal ordering is skipped with a note. Configured WordNet
+failures return 503, not a silently different translation. Pin the WordNet deployment
+alongside this service for reproducibility. TODO: batch API and batch semantic lookups.
+
+The Python entry point is `spoken_to_signed.text_to_gloss.senses.senses_to_gloss`.
+Rules produce a **lexical plan, not fluent ASL**: nonmanuals, spatial grammar and
+aspect realization remain downstream work. See [rules, evidence and evaluation](evaluation/asl/README.md).
+`/tokens-to-gloss` and the HTTP `glosser` selector were removed; existing Python
+token/GPT APIs remain available for comparisons. Callers must upgrade their WSD schema.
 
 `POST /gloss-to-pose` accepts already ordered `tokens` and the same language fields,
 returning binary `application/pose`. It uses the existing lookup and concatenation,
