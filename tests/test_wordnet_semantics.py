@@ -1,0 +1,65 @@
+import io
+import json
+from urllib.error import HTTPError, URLError
+
+import pytest
+
+from spoken_to_signed.text_to_gloss import wordnet
+
+
+def test_hypernyms_instances_and_cycles(monkeypatch):
+    calls = []
+    graph = {"day": {"hypernym": {"data": [{"id": "period"}]}},
+             "period": {"hypernym": {"data": [{"id": "omw-en-15113229-n"}]}},
+             "holiday": {"instance_hypernym": {"data": [{"id": "day"}]}},
+             "loop": {"hypernym": {"data": [{"id": "loop"}]}}, "other": {}}
+
+    def fetch(url, timeout):
+        assert timeout == 5
+        name = url.rsplit("/", 1)[-1]
+        calls.append(name)
+        return io.BytesIO(json.dumps({"data": {"relationships": graph[name]}}).encode())
+
+    monkeypatch.setattr(wordnet, "urlopen", fetch)
+    wn = wordnet.WordNet("http://wordnet")
+    assert wn.is_time("holiday")
+    assert wn.is_time("holiday")
+    assert calls == ["holiday", "day", "period"]
+    assert not wn.is_time("loop")
+    assert not wn.is_time("other")
+    assert wn.is_time("omw-en-00507716-r")
+
+
+def test_failed_requests_are_not_cached(monkeypatch):
+    calls = []
+
+    def fetch(url, timeout):
+        calls.append(url)
+        raise URLError("offline")
+
+    monkeypatch.setattr(wordnet, "urlopen", fetch)
+    wn = wordnet.WordNet("http://wordnet")
+    for _ in range(2):
+        with pytest.raises(wordnet.WordNetUnavailable):
+            wn.is_time("example")
+    assert len(calls) == 2
+
+
+def test_unknown_sense_is_not_an_outage(monkeypatch):
+    def fetch(url, timeout):
+        raise HTTPError(url, 404, "not found", {}, None)
+
+    monkeypatch.setattr(wordnet, "urlopen", fetch)
+    assert not wordnet.WordNet("http://wordnet").is_time("wikidata-en-L1-S1")
+
+
+def test_ids_cannot_replace_the_configured_host(monkeypatch):
+    urls = []
+
+    def fetch(url, timeout):
+        urls.append(url)
+        return io.BytesIO(b'{"data":{"relationships":{}}}')
+
+    monkeypatch.setattr(wordnet, "urlopen", fetch)
+    assert not wordnet.WordNet("http://wordnet").is_time("https://other/?secret")
+    assert urls == ["http://wordnet/lexicons/omw-en:1.4/synsets/https%3A%2F%2Fother%2F%3Fsecret"]

@@ -46,6 +46,74 @@ def _drop(item, tokens, root, question):
                      question=question and token["head"] == root and token["dep"] == "aux")
 
 
+def _phrase_items(positions, order):
+    """Return a contiguous whole phrase, or abstain if it would split a meaning."""
+    if not positions or max(positions) - min(positions) + 1 != len(positions):
+        return []
+    selected = []
+    for item in order:
+        span = set(range(item["start_token"], item["end_token"] + 1))
+        if span & positions:
+            if not span <= positions or _protected(item):
+                return []
+            selected.append(item)
+    return selected
+
+
+def _front_time(order, tokens, members, root, semantics, edits):
+    if semantics is None:
+        return order
+    front = []
+    for item in order:
+        head = _head(item, tokens)
+        if head is None or _protected(item):
+            continue
+        token = tokens[head]
+        # An object meaning "yesterday" is not a temporal frame. Nor is a
+        # duration introduced by "for", or time inside a subordinate clause.
+        if token["head"] != root or token["dep"] not in {"npadvmod", "advmod"}:
+            continue
+        if not any(semantics.is_time(s["id"]) for s in item["synsets"]):
+            continue
+        positions = _subtree(head, tokens, members)
+        if token["pos"] == "NOUN" and len(positions) == 1 and not any(
+            tokens[p]["head"] == root and tokens[p]["dep"] in {"dobj", "obj"} for p in members
+        ):
+            continue  # Bare temporal nouns can be objects despite an npadvmod parse.
+        if any(tokens[p]["dep"] not in {"npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case"}
+               or tokens[p]["pos"] in {"VERB", "AUX", "PUNCT"} for p in positions):
+            continue
+        phrase = _phrase_items(positions, order)
+        front.extend(i for i in phrase if not any(i is seen for seen in front))
+    front_ids = {id(i) for i in front}
+    result = front + [i for i in order if id(i) not in front_ids]
+    if result != order:
+        edits.append({"rule": "temporal-frame-first", "source_tokens": sorted(
+            p for i in front for p in range(i["start_token"], i["end_token"] + 1))})
+    return result
+
+
+def _subject_first(order, tokens, members, root, edits):
+    subjects = [i for i in members if tokens[i]["head"] == root and tokens[i]["dep"] == "nsubj"]
+    if len(subjects) != 1:
+        return order
+    phrase = _phrase_items(_subtree(subjects[0], tokens, members), order)
+    if not phrase:
+        return order
+    first = phrase[0]["start_token"]
+    auxiliaries = [i for i in order if i["end_token"] < first and i["start_token"] == i["end_token"]
+                   and tokens[i["start_token"]]["head"] == root
+                   and tokens[i["start_token"]]["dep"] == "aux"]
+    if not auxiliaries:
+        return order
+    aux_ids = {id(i) for i in auxiliaries}
+    result = [i for i in order if id(i) not in aux_ids]
+    insertion = next(i for i, item in enumerate(result) if item is phrase[-1]) + 1
+    result[insertion:insertion] = auxiliaries
+    edits.append({"rule": "subject-before-auxiliary", "source_tokens": [i["start_token"] for i in auxiliaries]})
+    return result
+
+
 def gloss_sentence(items, tokens, semantics=None):
     """Ordered rules: safe omission → temporal frame → simple question ordering.
 
@@ -70,6 +138,9 @@ def gloss_sentence(items, tokens, semantics=None):
         else:
             order.append(item)
     if not complex_clause:
+        order = _front_time(order, tokens, members, root, semantics, edits)
+        if question:
+            order = _subject_first(order, tokens, members, root, edits)
         length = _asl_question_length([GlossItem(i["word"], i["gloss"]) for i in items], items)
         prefix_ids = {id(i) for i in items[:length]}
         prefix = [i for i in order if id(i) in prefix_ids]
