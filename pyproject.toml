@@ -9,7 +9,7 @@ authors = [
 ]
 readme = "README.md"
 dependencies = [
-    "pose-format>=0.4.1",
+    "pose-format>=0.15.0",
     "pose_anonymization",
     "numpy",
     "scipy",

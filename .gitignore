@@ -7,3 +7,4 @@ spoken_to_signed.egg-info/
 *.code-workspace
 dist/
 quick_test.pose
+autoresearch/
