@@ -21,6 +21,7 @@ The stages are explicit functions, not a rule-engine framework:
 3. Apply guarded omissions within each sentence.
 4. Optionally front a semantically temporal, syntactically adverbial phrase.
 5. Normalize simple question order and retain source alignment.
+6. Omit standalone punctuation after interpreting it; retain sentence boundaries and question notes.
 
 `changes` identifies each applied rule and its original token indexes; `notes`
 reports missing semantic configuration, complex-clause fallback and unrealized
@@ -87,7 +88,7 @@ negation, questions, relative clauses, coordination, conditionals, ellipsis,
 quotations, names, time phrases and deliberately misleading temporal senses.
 These are original engineering examples, not copied corpus annotations.
 
-The metric compares retained source words, order and sentence boundaries,
+The metric compares retained source words (excluding standalone punctuation), order and sentence boundaries,
 case-insensitively. Repeated words also have index/provenance unit tests. Some
 expectations explicitly require conservative English-shaped output. Therefore
 **a passing percentage is not translation accuracy or native-ASL acceptance**.
@@ -102,7 +103,7 @@ There are two separate experiments:
 - **Live integration:** the real WSD response, including its actual selected
   senses and entities, passed unchanged to the Docker HTTP service.
 
-Initial results (spaCy 3.8.16, en_core_web_lg 3.8.0):
+Historical results, before punctuation omission (spaCy 3.8.16, en_core_web_lg 3.8.0):
 
 | Version | Development | Held-out | Challenge |
 | --- | ---: | ---: | ---: |
@@ -116,7 +117,7 @@ was not edited to turn that miss into a pass. No model training or model judge
 was used. The implementer reviewed failures; independent Deaf-ASL review is
 still required before making fluency claims.
 
-### Live integration and manual judgment
+### Historical live integration and manual judgment (before punctuation omission)
 
 The patched native WSD service (`sign/Ettin-150m-WSD`, revision
 `8751b577199d1bb95b74fa2457da7065d57100ae`) fed the Docker glosser unchanged.
