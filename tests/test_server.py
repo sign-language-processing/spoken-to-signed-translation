@@ -102,53 +102,39 @@ def test_wordnet_outage_is_not_success(client, monkeypatch):
 
 
 def test_pose_backend_is_optional(client, monkeypatch):
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.delenv("LEXICON_PATH", raising=False)
+    monkeypatch.delenv("DICTIONARY_API_URL", raising=False)
     assert client.get("/health").status_code == 200
     assert client.post("/gloss-to-pose", json=request([{"gloss": "hello"}])).status_code == 503
 
 
-def test_pose_endpoint_composes_existing_library(client, monkeypatch):
-    import spoken_to_signed.gloss_to_pose as poses
-
-    lookup = MagicMock()
-    factory = MagicMock(return_value=lookup)
-    monkeypatch.setattr(server, "pose_lookup", factory)
-    result = MagicMock()
-    result.pose.write.side_effect = lambda buffer: buffer.write(b"pose bytes")
-    construct = MagicMock(return_value=result)
-    monkeypatch.setattr(poses, "gloss_to_pose", construct)
-    response = client.post(
-        "/gloss-to-pose",
-        json=request(
-            [{"gloss": "hello", "synsets": [{"id": "hello.n.01"}]}, {"gloss": ".", "pos": "PUNCT"}],
-            fingerspelling=False,
-            source="test",
-            anonymize=True,
-        ),
-    )
+@pytest.mark.parametrize(("target", "field", "result"), [("pose", "poses", [{"md5": "a" * 32}]),
+                                               ("signwriting", "signwriting", ["FSW"])])
+def test_media_endpoints_preserve_one_result_per_gloss(client, monkeypatch, target, field, result):
+    resolve = MagicMock(return_value=result)
+    monkeypatch.setattr(server, "realize", resolve)
+    response = client.post(f"/gloss-to-{target}", json=request(
+        [{"gloss": "hello", "synsets": [{"id": "hello.n.01"}]}], fingerspelling=False))
     assert response.status_code == 200
-    assert response.content == b"pose bytes"
-    assert response.headers["content-type"] == "application/pose"
+    assert response.json() == {field: result}
     assert response.headers["X-Model-Tag"] == "test-build"
-    factory.assert_called_once_with(False, "test")
-    assert construct.call_args.args == ([server.GlossItem("hello", "hello")], lookup, "en", "ase")
-    assert construct.call_args.kwargs == {"source": "test", "anonymize": True}
+    assert response.headers["Cache-Control"] == "no-store"
+    assert resolve.call_args.args[0][0]["synsets"] == [{"id": "hello.n.01"}]
+    assert resolve.call_args.args[1:] == (target, "en", "ase", False)
 
 
-def test_pose_request_rejects_empty_content(client, monkeypatch):
-    monkeypatch.setattr(server, "pose_lookup", MagicMock())
-    assert client.post("/gloss-to-pose", json=request([])).status_code == 422
+def test_media_empty_batch_and_invalid_tokens(client):
+    assert client.post("/gloss-to-pose", json=request([])).json() == {"poses": []}
     assert client.post("/gloss-to-pose", json=request([{"gloss": ".", "pos": "PUNCT"}])).status_code == 422
+    assert client.post("/gloss-to-pose", json=request([{"gloss": "a" * 129}])).status_code == 422
+    assert client.post("/gloss-to-pose", json=request([{"gloss": "a"}], signed_language="../../x")).status_code == 422
+    assert client.post("/gloss-to-pose", json=request([{"gloss": "a", "synsets": [{"id": "a,b"}]}])).status_code == 422
 
 
-def test_pose_settings_are_request_local(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/test")
-    with_fallback = server.pose_lookup(True, None)
-    without_fallback = server.pose_lookup(False, None)
-    assert with_fallback is not without_fallback
-    assert with_fallback.backup is not None
-    assert without_fallback.backup is None
+@pytest.mark.parametrize(("error", "status"), [(server.LookupUnavailableError("offline"), 503),
+                                        (server.MissingSignError("missing"), 404)])
+def test_media_outage_and_miss_are_distinct(client, monkeypatch, error, status):
+    monkeypatch.setattr(server, "realize", MagicMock(side_effect=error))
+    assert client.post("/gloss-to-signwriting", json=request([{"gloss": "a"}])).status_code == status
 
 
 def test_request_limits(client):

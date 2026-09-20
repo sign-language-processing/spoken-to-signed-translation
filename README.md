@@ -160,14 +160,34 @@ aspect realization remain downstream work. See [rules, evidence and evaluation](
 `/tokens-to-gloss` and the HTTP `glosser` selector were removed; existing Python
 token/GPT APIs remain available for comparisons. Callers must upgrade their WSD schema.
 
-`POST /gloss-to-pose` accepts already ordered `tokens` and the same language fields,
-returning binary `application/pose`. It uses the existing lookup and concatenation,
-excluding `pos: "PUNCT"`. Optional: `fingerspelling=true`, `anonymize=false`, `source`
-(PostgreSQL video-ID prefix). Configure `LEXICON_PATH` for CSV or `DATABASE_URL`
-for PostgreSQL (takes precedence); without either, pose requests return 503.
-For PostgreSQL, install `.[server,postgres,gcs]` and use a read-only role.
-The optional `SQLPoseLookup` backend migrates the old `models` captions-table lookup
-and reads `gs://sign-mt-poses`; it is not dictionary-api synset lookup.
+`POST /gloss-to-pose` and `POST /gloss-to-signwriting` accept ordered `tokens`
+(glosser output), `spoken_language`, `signed_language`, and optional
+`fingerspelling` (default true). Each returns exactly one asset per token:
+`{"poses": [{"md5": "<video content MD5>"}, {"base64": "<generated .pose>"}]}`
+or `{"signwriting": ["<FSW>", "<FSW>"]}`. Empty batches return empty lists.
+The pose endpoint no longer returns a concatenated binary file; clients must upgrade.
+Python CSV/PostgreSQL lookup APIs remain available separately.
+
+Configure `DICTIONARY_API_URL` (service base URL) and `TRANSFORMED_BUCKET`.
+The service calls `/internal/links` with a Google ID token whose audience is that
+exact URL. Allowlist its service account in dictionary-api. For local development
+only, set `SKIP_AUTH=true` here and in dictionary-api; no user/API token is needed.
+Keep this service private, and authenticate any gateway route exposing these assets.
+The service account needs GCS metadata access to the transformed bucket.
+
+Lookup batches distinct concept IDs (100 per call), tries whole-span entities then
+lexical senses, and fingerspells only actual misses. Dictionary poses stay lazy:
+only existence of `videos/<md5>/holistic.pose` is checked, never downloaded.
+Generated fingerspelling preserves the full Holistic layout for downstream joining.
+When concatenating whole fingerspelled words, use `max_sign_seconds=None` to avoid
+compressing an entire word to a single-sign duration. Fingerspelling remains serial
+until the underlying libraries support batching. Requests allow up to 128 tokens;
+unsupported characters fail with 404 rather than silently dropping letters.
+Upstream failures return 503, not fingerspelling. Asset responses are `no-store`
+because code versions do not track dictionary edits.
+
+`senses-to-gloss` now removes standalone punctuation from its lexical output,
+recording `omit-punctuation` edits and retaining sentence/question metadata.
 Glosser/health requests need no database. See `/docs` for the full API schema.
 
 ```bash
@@ -176,7 +196,7 @@ docker run --rm -p 8080:8080 spoken-to-signed
 ```
 
 Releases publish `ghcr.io/sign-language-processing/spoken-to-signed-translation:<tag>`.
-The image includes PostgreSQL/GCS dependencies. `PORT` defaults to 8080; Hypercorn
+The image includes dictionary/fingerspelling and GCS dependencies. `PORT` defaults to 8080; Hypercorn
 supports HTTP/1.1 and HTTP/2 (h2c). Configure HTTP/2 upstream in the gateway too.
 `/health` returns `version`; successful API responses include `X-Model-Tag`, set by
 `MODEL_VERSION` (baked into release images), with a suffix identifying the configured

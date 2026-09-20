@@ -7,7 +7,8 @@ from .lookup import CoverageType, PoseResult
 
 
 class FingerspellingPoseLookup(CSVPoseLookup):
-    def __init__(self):
+    def __init__(self, *, reduce=None):
+        self.reduce = reduce
         fs_directory = Path(__file__).parent.parent.parent / "assets" / "fingerspelling_lexicon"
 
         super().__init__(directory=str(fs_directory))
@@ -59,4 +60,6 @@ class FingerspellingPoseLookup(CSVPoseLookup):
         # hold the last letters longer to make it more readable
         poses[-1] = self.stretch_pose(poses[-1], 2)
 
-        return PoseResult(pose=concatenate_poses(poses), coverage=CoverageType.FINGERSPELLING_BACKUP)
+        return PoseResult(
+            pose=concatenate_poses(poses, reduce=self.reduce), coverage=CoverageType.FINGERSPELLING_BACKUP,
+        )

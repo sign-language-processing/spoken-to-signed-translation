@@ -180,8 +180,10 @@ def concatenate_poses(
     max_sign_seconds: Optional[float] = 0.8,
     hide_idle_hands: bool = True,
     signing_spans: Optional[list[Optional[tuple[int, int]]]] = None,
+    reduce: Optional[bool] = None,
 ) -> Pose:
-    if ConcatenationSettings.is_reduce_holistic:
+    should_reduce = ConcatenationSettings.is_reduce_holistic if reduce is None else reduce
+    if should_reduce:
         print("Reducing poses...")
         poses = [reduce_holistic(p) for p in poses]
 

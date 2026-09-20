@@ -175,3 +175,7 @@ claimed. Next: obtain an authorized ASLLRP subset and native-signer review, alig
 meaning units rather than English spellings, and score omission errors, temporal
 scope, clause boundaries and nonmanual coverage separately. Corpus gloss labels
 are sign identifiers, not necessarily the English lemmas used by this utility.
+Current expected lexical output excludes standalone punctuation. The baseline
+comparison likewise ignores punctuation; historical scores below predate this
+output-contract change. Sentence boundaries and question notes remain separate
+metadata, not fingerspellable dictionary candidates.

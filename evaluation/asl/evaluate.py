@@ -77,7 +77,9 @@ def main():
                 [GlossItem(t["word"], t["lemma"]) for t in data["tokens"]],
                 metadata=[{"pos": t["pos"], "morphology": [t["morph"]]} for t in data["tokens"]],
             )
-            output = " | ".join(" ".join(t.word for t in sentence) for sentence in sentences)
+            # Score lexical items for both systems, not punctuation serialization.
+            output = " | ".join(" ".join(t.word for t in sentence if any(c.isalnum() for c in t.word))
+                                for sentence in sentences)
         else:
             if args.glosser_url:
                 body = {"spoken_language": "en", "signed_language": "ase", "senses": data}
