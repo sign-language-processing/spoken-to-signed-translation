@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
 from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from spoken_to_signed.gloss_to_media import LookupUnavailableError, MissingSignError, realize
+from spoken_to_signed.gloss_to_media import LookupUnavailableError, MissingSignError, realize, spell
 from spoken_to_signed.text_to_gloss.senses import senses_to_gloss as gloss_senses
 from spoken_to_signed.text_to_gloss.wordnet import WordNet, WordNetUnavailableError
 
@@ -139,9 +139,12 @@ class MediaToken(Token):
 
 class MediaRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    tokens: list[MediaToken] = Field(max_length=128)
+    tokens: list[MediaToken] = Field(max_length=1024)
     spoken_language: str = Field(pattern=r"^[a-z]{2,3}$")
     signed_language: str = Field(pattern=r"^[a-z]{3}$")
+
+
+class SignWritingRequest(MediaRequest):
     fingerspelling: bool = True
 
 
@@ -164,14 +167,14 @@ def senses_to_gloss(request: SensesRequest, response: Response):
     return result
 
 
-def realize_glosses(request: MediaRequest, response: Response, target: str):
+def realize_glosses(request: MediaRequest, response: Response, target: str, fingerspelling: bool = True):
     try:
         result = realize(
             [token.model_dump() for token in request.tokens],
             target,
             request.spoken_language,
             request.signed_language,
-            request.fingerspelling,
+            fingerspelling,
         )
     except LookupUnavailableError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
@@ -184,11 +187,28 @@ def realize_glosses(request: MediaRequest, response: Response, target: str):
     return result
 
 
-@app.post("/gloss-to-pose")
-def gloss_to_pose(request: MediaRequest, response: Response):
-    return {"poses": realize_glosses(request, response, "pose")}
+@app.post("/gloss-to-video")
+def gloss_to_video(request: MediaRequest, response: Response):
+    return {"videos": realize_glosses(request, response, "video")}
+
+
+class FingerspellingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=128)
+    spoken_language: str = Field(pattern=r"^[a-z]{2,3}$")
+    signed_language: str = Field(pattern=r"^[a-z]{3}$")
+
+
+@app.post("/fingerspell-to-pose")
+def fingerspell_to_pose(request: FingerspellingRequest):
+    data = spell(
+        {"word": request.text, "gloss": request.text}, "pose", request.spoken_language, request.signed_language
+    )
+    if not data:
+        raise HTTPException(404, "No complete fingerspelling for this text/language")
+    return Response(data, media_type="application/pose", headers={"X-Model-Tag": MODEL_VERSION})
 
 
 @app.post("/gloss-to-signwriting")
-def gloss_to_signwriting(request: MediaRequest, response: Response):
-    return {"signwriting": realize_glosses(request, response, "signwriting")}
+def gloss_to_signwriting(request: SignWritingRequest, response: Response):
+    return {"signwriting": realize_glosses(request, response, "signwriting", request.fingerspelling)}

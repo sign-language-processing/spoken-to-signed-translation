@@ -26,7 +26,7 @@ dev = [
     "httpx",
     "spoken-to-signed[postgres]",
 ]
-server = ["fastapi", "pydantic>=2", "hypercorn", "httpx", "google-cloud-storage", "signwriting>=0.1.17"]
+server = ["fastapi", "pydantic>=2", "hypercorn", "httpx", "google-auth[requests]", "signwriting>=0.1.17"]
 postgres = ["psycopg2-binary"]
 gpt = ["openai", "python-dotenv"]
 lexicon = [

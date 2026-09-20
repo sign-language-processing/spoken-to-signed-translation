@@ -104,30 +104,32 @@ def test_wordnet_outage_is_not_success(client, monkeypatch):
 def test_pose_backend_is_optional(client, monkeypatch):
     monkeypatch.delenv("DICTIONARY_API_URL", raising=False)
     assert client.get("/health").status_code == 200
-    assert client.post("/gloss-to-pose", json=request([{"gloss": "hello"}])).status_code == 503
+    assert client.post("/gloss-to-video", json=request([{"gloss": "hello"}])).status_code == 503
 
 
-@pytest.mark.parametrize(("target", "field", "result"), [("pose", "poses", [{"md5": "a" * 32}]),
+@pytest.mark.parametrize(("target", "field", "result"), [("video", "videos", [{"text": "hello"}]),
                                                ("signwriting", "signwriting", ["FSW"])])
 def test_media_endpoints_preserve_one_result_per_gloss(client, monkeypatch, target, field, result):
     resolve = MagicMock(return_value=result)
     monkeypatch.setattr(server, "realize", resolve)
     response = client.post(f"/gloss-to-{target}", json=request(
-        [{"gloss": "hello", "synsets": [{"id": "hello.n.01"}]}], fingerspelling=False))
+        [{"gloss": "hello", "synsets": [{"id": "hello.n.01"}]}],
+        **({"fingerspelling": False} if target == "signwriting" else {})))
     assert response.status_code == 200
     assert response.json() == {field: result}
     assert response.headers["X-Model-Tag"] == "test-build"
     assert response.headers["Cache-Control"] == "no-store"
     assert resolve.call_args.args[0][0]["synsets"] == [{"id": "hello.n.01"}]
-    assert resolve.call_args.args[1:] == (target, "en", "ase", False)
+    assert resolve.call_args.args[1:] == (target, "en", "ase", target == "video")
 
 
 def test_media_empty_batch_and_invalid_tokens(client):
-    assert client.post("/gloss-to-pose", json=request([])).json() == {"poses": []}
-    assert client.post("/gloss-to-pose", json=request([{"gloss": ".", "pos": "PUNCT"}])).status_code == 422
-    assert client.post("/gloss-to-pose", json=request([{"gloss": "a" * 129}])).status_code == 422
-    assert client.post("/gloss-to-pose", json=request([{"gloss": "a"}], signed_language="../../x")).status_code == 422
-    assert client.post("/gloss-to-pose", json=request([{"gloss": "a", "synsets": [{"id": "a,b"}]}])).status_code == 422
+    assert client.post("/gloss-to-video", json=request([])).json() == {"videos": []}
+    assert client.post("/gloss-to-video", json=request([], fingerspelling=False)).status_code == 422
+    assert client.post("/gloss-to-video", json=request([{"gloss": ".", "pos": "PUNCT"}])).status_code == 422
+    assert client.post("/gloss-to-video", json=request([{"gloss": "a" * 129}])).status_code == 422
+    assert client.post("/gloss-to-video", json=request([{"gloss": "a"}], signed_language="../../x")).status_code == 422
+    assert client.post("/gloss-to-video", json=request([{"gloss": "a", "synsets": [{"id": "a,b"}]}])).status_code == 422
 
 
 @pytest.mark.parametrize(("error", "status"), [(server.LookupUnavailableError("offline"), 503),
@@ -148,3 +150,15 @@ def test_sentence_metadata_survives_flattening(client):
     result = client.post("/senses-to-gloss", json=senses_request()).json()
     assert result["sentences"][0][0]["sentence"] == 0
     assert result["sentences"][0][0]["notes"] == ["temporal-semantics-unavailable"]
+
+
+def test_fingerspell_pose_without_dictionary_configuration(client, monkeypatch):
+    from pose_format import Pose
+
+    monkeypatch.delenv("DICTIONARY_API_URL", raising=False)
+    body = {"text": "Amit", "spoken_language": "en", "signed_language": "ase"}
+    response = client.post("/fingerspell-to-pose", json=body)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pose"
+    assert len(Pose.read(response.content).body) > 0
+    assert client.post("/fingerspell-to-pose", json={**body, "text": "🙂"}).status_code == 404
