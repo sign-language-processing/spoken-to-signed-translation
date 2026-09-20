@@ -135,13 +135,15 @@ Set `WORDNET_URL` to the WordNet API for semantic time-frame ordering.
 }
 ```
 
-Returns `sentences` in **your name What ?** order and `indexes: [[2, 3, 0, 4]]`,
+Returns `sentences` in **your name What** order and `indexes: [[2, 3, 0]]`,
 plus an auditable `changes` list and `notes` describing conservative fallbacks.
 Indexes refer to grouped candidates, not raw tokens. Each candidate carries its
 original inclusive `start_token`/`end_token`, exact-span senses/entities, morphology,
 and `source` annotations for lookup/fallback. `sentence` and `notes` also travel with
 each candidate so flattening does not erase boundaries or limitations.
-Unknown words survive for fingerspelling.
+Unknown words survive for fingerspelling. Standalone punctuation is omitted after
+interpreting it; sentence boundaries and question notes are preserved.
+
 Overlapping spans prefer the widest meaning (earlier on ties); constituent senses
 are never treated as senses of the whole phrase. No dictionary lookup happens here.
 WSD sentence boundaries are authoritative; malformed trees/spans return 422.

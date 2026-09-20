@@ -73,11 +73,15 @@ def main():
     results = []
     for case, data in zip(cases, documents):
         if args.baseline:
+            tokens = [GlossItem(t["word"], t["lemma"]) for t in data["tokens"]]
             sentences = rules.tokens_to_gloss(
-                [GlossItem(t["word"], t["lemma"]) for t in data["tokens"]],
+                tokens,
                 metadata=[{"pos": t["pos"], "morphology": [t["morph"]]} for t in data["tokens"]],
             )
-            output = " | ".join(" ".join(t.word for t in sentence) for sentence in sentences)
+            # Both systems are scored on lexical items, excluding standalone punctuation.
+            punctuation = {id(item) for item, t in zip(tokens, data["tokens"]) if t["pos"] == "PUNCT"}
+            output = " | ".join(" ".join(t.word for t in sentence if id(t) not in punctuation)
+                                for sentence in sentences)
         else:
             if args.glosser_url:
                 body = {"spoken_language": "en", "signed_language": "ase", "senses": data}
