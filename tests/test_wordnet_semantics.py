@@ -48,6 +48,16 @@ def test_failed_requests_are_not_cached(monkeypatch):
     assert len(calls) == 2
 
 
+def test_clock_times_have_a_separate_measurement_ancestry(monkeypatch):
+    # Verified via the WordNet API: noon -> hour -> time-of-day (a reading),
+    # not the time-period / point-in-time roots.
+    parents = {"omw-en-15165490-n": ("omw-en-15228378-n",),
+               "omw-en-15228378-n": ("omw-en-15129927-n",), "omw-en-15129927-n": ()}
+    wn = wordnet.WordNet("http://wordnet")
+    monkeypatch.setattr(wn, "parents", lambda sense: parents[sense])
+    assert wn.is_time("omw-en-15165490-n")
+
+
 def test_unknown_sense_is_not_an_outage(monkeypatch):
     def fetch(url, timeout):
         raise HTTPError(url, 404, "not found", {}, None)

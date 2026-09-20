@@ -9,8 +9,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import urlopen
 
-# OMW English 1.4: time period, point in time, time unit. IDs, not display labels.
-TIME_ROOTS = {"omw-en-15113229-n", "omw-en-15180528-n", "omw-en-15154774-n"}
+# OMW English 1.4: time period, point in time, time unit, time-of-day reading.
+TIME_ROOTS = {"omw-en-15113229-n", "omw-en-15180528-n", "omw-en-15154774-n", "omw-en-15129927-n"}
 # WordNet adverbs have no hypernym hierarchy. These are exact selected senses,
 # not word triggers: yesterday (literal/recent), tomorrow, today (literal), tonight.
 TIME_ADVERBS = {"omw-en-00507716-r", "omw-en-00507819-r", "omw-en-00479275-r", "omw-en-00207366-r", "omw-en-00079499-r"}

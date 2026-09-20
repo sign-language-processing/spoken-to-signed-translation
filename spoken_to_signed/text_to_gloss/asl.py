@@ -7,6 +7,14 @@ aspect and nonmanuals still need a realization stage. See evaluation/asl/README.
 from .rules import _asl_question_length, _omit_asl
 from .types import GlossItem
 
+# Selected Wikidata lexical sense: "indicating a location for an event".
+# Not a surface-word trigger: other meanings of "at" must keep their relation.
+EVENT_LOCATION = "wikidata-en-L3263-S2"
+INFINITIVE_COMPLEMENTS = {"want", "need", "like", "try", "plan", "hope", "decide", "prefer"}
+# Syntax alone cannot distinguish "meet on Monday" from "reflect on Monday".
+# Limit PP fronting to these supported event predicates; unknown frames abstain.
+TEMPORAL_PP_PREDICATES = {"arrive", "leave", "meet", "work", "eat", "sleep", "visit", "call", "deposit"}
+
 
 def _head(item, tokens):
     start, end = item["start_token"], item["end_token"]
@@ -35,6 +43,12 @@ def _drop(item, tokens, children, root, question):
         return False
     index = item["start_token"]
     token = tokens[index]
+    if token["lemma"] == "to" and token["pos"] == "PART" and token["dep"] == "aux":
+        verb = tokens[token["head"]]
+        # Do not erase cues in unresolved constructions such as "used to",
+        # "have to", "remember to", ellipsis, or directional/recipient "to".
+        return (verb["pos"] == "VERB" and verb["dep"] == "xcomp"
+                and tokens[verb["head"]]["lemma"] in INFINITIVE_COMPLEMENTS)
     if token["lemma"] == "be":
         # Preserve existential, passive, progressive and elliptical constructions.
         if token["dep"] != "ROOT" or any(t["dep"] == "expl" for t in children.get(index, [])):
@@ -64,6 +78,22 @@ def _phrase_items(positions, order):
     return selected
 
 
+def _time_frame_head(head, tokens, root):
+    """Locate the whole temporal adjunct, retaining its relational words."""
+    token = tokens[head]
+    parent = tokens[token["head"]]
+    if token["dep"] == "pobj" and token.get("ent_type") in {"DATE", "TIME"}:
+        if (parent["dep"] == "prep" and parent["lemma"] in {"on", "at"} and parent["head"] == root
+                and tokens[root]["pos"] == "VERB" and tokens[root]["lemma"] in TEMPORAL_PP_PREDICATES):
+            return token["head"]
+    if token["dep"] == "npadvmod" and parent["lemma"] == "ago" and parent["dep"] == "advmod":
+        if parent["head"] == root:
+            return token["head"]
+    if token["head"] == root and token["dep"] in {"npadvmod", "advmod"}:
+        return head
+    return None
+
+
 def _front_time(order, tokens, members, root, semantics, edits):
     if semantics is None:
         return order
@@ -73,13 +103,12 @@ def _front_time(order, tokens, members, root, semantics, edits):
         if head is None or _protected(item):
             continue
         token = tokens[head]
-        # An object meaning "yesterday" is not a temporal frame. Nor is a
-        # duration introduced by "for", or time inside a subordinate clause.
-        if token["head"] != root or token["dep"] not in {"npadvmod", "advmod"}:
+        frame = _time_frame_head(head, tokens, root)
+        if frame is None:
             continue
         if len(item["synsets"]) != 1 or not semantics(item["synsets"][0]["id"]):
             continue
-        positions = _subtree(head, tokens, members)
+        positions = _subtree(frame, tokens, members)
         if (
             token["pos"] == "NOUN"
             and len(positions) == 1
@@ -87,7 +116,9 @@ def _front_time(order, tokens, members, root, semantics, edits):
         ):
             continue  # Bare temporal nouns can be objects despite an npadvmod parse.
         if any(
-            tokens[p]["dep"] not in {"npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case"}
+            tokens[p]["dep"] not in {
+                "npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case", "prep", "pobj",
+            }
             or tokens[p]["pos"] in {"VERB", "AUX", "PUNCT"}
             for p in positions
         ):
@@ -106,6 +137,38 @@ def _front_time(order, tokens, members, root, semantics, edits):
             }
         )
     return result
+
+
+def _front_location(order, tokens, members, root, edits):
+    """A narrow event-location frame, not general topicalization/preposition drop."""
+    if tokens[root]["pos"] != "VERB" or not any(
+        tokens[i]["head"] == root and tokens[i]["dep"] in {"obj", "dobj"} for i in members
+    ):
+        return order
+    # Fronting under negation, modality, focus, or questions may change scope.
+    if any(tokens[i]["dep"] in {"neg", "aux", "advmod"} or tokens[i]["word"] == "?" for i in members):
+        return order
+    prepositions = [i for i in members if tokens[i]["dep"] == "prep"]
+    if len(prepositions) != 1:
+        return order
+    [head] = prepositions
+    marker = next((i for i in order if i["start_token"] == i["end_token"] == head), None)
+    if (marker is None or _protected(marker) or tokens[head]["head"] != root
+            or [s["id"] for s in marker["synsets"]] != [EVENT_LOCATION]):
+        return order
+    positions = _subtree(head, tokens, members)
+    if not any(tokens[i]["dep"] == "pobj" and tokens[i]["pos"] in {"NOUN", "PROPN"} for i in positions):
+        return order
+    if any(tokens[i]["dep"] not in {"prep", "pobj", "det", "amod", "compound", "poss", "case", "nummod"}
+           for i in positions):
+        return order
+    phrase = _phrase_items(positions, order)
+    if not phrase:
+        return order
+    phrase_ids = {id(i) for i in phrase}
+    edits.append({"rule": "omit-event-location-marker", "source_tokens": [head]})
+    edits.append({"rule": "event-location-frame", "source_tokens": sorted(positions)})
+    return [i for i in phrase if i is not marker] + [i for i in order if id(i) not in phrase_ids]
 
 
 def _subject_first(order, tokens, members, root, edits):
@@ -135,7 +198,7 @@ def _subject_first(order, tokens, members, root, edits):
 
 
 def gloss_sentence(items, tokens, semantics=None):
-    """Ordered rules: safe omission → temporal frame → simple question ordering.
+    """Ordered rules: safe omission → location/time frames → simple question ordering.
 
     Uncertain or multi-clause syntax keeps source order. We never duplicate items,
     split a WSD span, invent a sense, or drop a negation/modal/content word.
@@ -164,6 +227,7 @@ def gloss_sentence(items, tokens, semantics=None):
         else:
             order.append(item)
     if not complex_clause:
+        order = _front_location(order, tokens, members, root, edits)
         order = _front_time(order, tokens, members, root, semantics, edits)
         if question:
             order = _subject_first(order, tokens, members, root, edits)
