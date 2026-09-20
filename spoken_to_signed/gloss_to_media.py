@@ -68,8 +68,9 @@ def storage_client():
 
 def identifiers(token, field):
     if field == "wikidata_id":
-        return [f"Q{item['id']}" if str(item["id"]).isdigit() else str(item["id"])
-                for item in token.get("entities", [])]
+        return [
+            f"Q{item['id']}" if str(item["id"]).isdigit() else str(item["id"]) for item in token.get("entities", [])
+        ]
     return [str(item["id"]) for item in token.get("synsets", [])]
 
 
@@ -80,16 +81,20 @@ class Dictionary:
     def links(self, field, ids, signed_language):
         try:
             for start in range(0, len(ids), 100):
-                response = self.client.get(f"{self.url}/internal/links", params={
-                    field: ",".join(ids[start:start + 100]), "signed_language": signed_language,
-                })
+                response = self.client.get(
+                    f"{self.url}/internal/links",
+                    params={
+                        field: ",".join(ids[start : start + 100]),
+                        "signed_language": signed_language,
+                    },
+                )
                 response.raise_for_status()
                 body = response.json()
                 if body.get("success") is not True or not isinstance(body.get("data"), list):
                     raise ValueError("Invalid dictionary envelope")
                 for row in body["data"]:
                     link = Link.model_validate(row)
-                    if getattr(link, field) not in ids[start:start + 100]:
+                    if getattr(link, field) not in ids[start : start + 100]:
                         raise ValueError("Dictionary returned an unrequested concept")
                     if link.confidence > 0:
                         yield link
@@ -155,8 +160,11 @@ class Realizer:
         generated_bytes = 0
         # TODO: the fingerspelling libraries have scalar APIs; keep assembly serial for now.
         for token, hits in zip(tokens, candidates):
-            value = (next((hit.assets.signwriting for hit in hits if hit.assets.signwriting), None)
-                     if target == "signwriting" else self.pose_candidate(hits, exists))
+            value = (
+                next((hit.assets.signwriting for hit in hits if hit.assets.signwriting), None)
+                if target == "signwriting"
+                else self.pose_candidate(hits, exists)
+            )
             if not value and fingerspelling:
                 value = spell(token, target, spoken_language, signed_language)
             if not value:
@@ -182,9 +190,16 @@ def spell(token, target, spoken_language, signed_language):
         letters = "".join(word.split())
         if not letters:
             return None
-        pose = FingerspellingPoseLookup(reduce=False).lookup(
-            letters, token["gloss"], spoken_language, signed_language,
-        ).pose
+        pose = (
+            FingerspellingPoseLookup(reduce=False)
+            .lookup(
+                letters,
+                token["gloss"],
+                spoken_language,
+                signed_language,
+            )
+            .pose
+        )
         buffer = BytesIO()
         pose.write(buffer)
         return {"base64": base64.b64encode(buffer.getvalue()).decode("ascii")}
@@ -210,5 +225,9 @@ def realize(tokens, target, spoken_language, signed_language, fingerspelling=Tru
         bucket = os.environ.get("TRANSFORMED_BUCKET")
         store = PoseStore(bucket) if target == "pose" and bucket else None
         return Realizer(Dictionary(client, url), store).resolve(
-            tokens, target, spoken_language, signed_language, fingerspelling,
+            tokens,
+            target,
+            spoken_language,
+            signed_language,
+            fingerspelling,
         )

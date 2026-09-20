@@ -61,5 +61,6 @@ class FingerspellingPoseLookup(CSVPoseLookup):
         poses[-1] = self.stretch_pose(poses[-1], 2)
 
         return PoseResult(
-            pose=concatenate_poses(poses, reduce=self.reduce), coverage=CoverageType.FINGERSPELLING_BACKUP,
+            pose=concatenate_poses(poses, reduce=self.reduce),
+            coverage=CoverageType.FINGERSPELLING_BACKUP,
         )

@@ -166,8 +166,13 @@ def senses_to_gloss(request: SensesRequest, response: Response):
 
 def realize_glosses(request: MediaRequest, response: Response, target: str):
     try:
-        result = realize([token.model_dump() for token in request.tokens], target,
-                         request.spoken_language, request.signed_language, request.fingerspelling)
+        result = realize(
+            [token.model_dump() for token in request.tokens],
+            target,
+            request.spoken_language,
+            request.signed_language,
+            request.fingerspelling,
+        )
     except LookupUnavailableError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except MissingSignError as error:
