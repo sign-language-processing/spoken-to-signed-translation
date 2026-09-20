@@ -47,8 +47,8 @@ class BodyLimit:
 @asynccontextmanager
 async def lifespan(app):
     if semantics:
-        # Reject a WordNet deployment without the pinned OMW resource at startup.
-        await run_in_threadpool(semantics.parents, "omw-en-15113229-n")
+        # Validate the pinned resource, allowing a scale-to-zero WordNet service to wake up.
+        await run_in_threadpool(semantics.parents, "omw-en-15113229-n", timeout=60)
     yield
 
 

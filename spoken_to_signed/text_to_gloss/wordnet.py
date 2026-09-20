@@ -28,10 +28,10 @@ class WordNet:
         # Bound the cache per adapter. Exceptions are deliberately not cached.
         self.parents = lru_cache(maxsize=8192)(self._parents)
 
-    def _parents(self, synset: str) -> tuple[str, ...]:
+    def _parents(self, synset: str, *, timeout: float = 5) -> tuple[str, ...]:
         url = f"{self.url}/lexicons/omw-en:1.4/synsets/{quote(synset, safe='')}"
         try:
-            with urlopen(url, timeout=5) as response:
+            with urlopen(url, timeout=timeout) as response:
                 payload = response.read(1024 * 1024 + 1)
                 if len(payload) > 1024 * 1024:
                     raise WordNetUnavailableError("WordNet response exceeded size limit")
