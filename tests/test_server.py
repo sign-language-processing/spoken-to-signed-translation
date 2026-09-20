@@ -38,6 +38,27 @@ def test_health(client):
     assert response.headers["X-Model-Tag"] == "test-build"
 
 
+def test_wordnet_startup_allows_cold_start_without_relaxing_requests(monkeypatch):
+    import io
+
+    from spoken_to_signed.text_to_gloss import wordnet
+
+    timeouts = []
+
+    def fetch(url, timeout):
+        timeouts.append(timeout)
+        if len(timeouts) == 1 and timeout < 10:
+            raise TimeoutError("WordNet is cold")
+        return io.BytesIO(b'{"data":{"relationships":{}}}')
+
+    monkeypatch.setattr(wordnet, "urlopen", fetch)
+    monkeypatch.setattr(server, "semantics", wordnet.WordNet("http://wordnet"))
+    with TestClient(server.app) as client:
+        assert client.get("/health").status_code == 200
+        assert server.semantics.parents("other") == ()
+    assert timeouts == [60, 5]
+
+
 def test_senses_endpoint_needs_no_model(client):
     response = client.post("/senses-to-gloss", json=senses_request())
     assert response.status_code == 200
