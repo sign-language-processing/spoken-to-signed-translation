@@ -23,7 +23,7 @@ def test_time_frames_stay_in_their_clause_with_original_alignment():
     doc = coordinated()
     original = deepcopy(doc)
     result = senses_to_gloss(doc, semantics=lambda _: True)
-    assert result["indexes"] == [[3, 0, 1, 2, 5, 9, 6, 7, 8]]
+    assert result["indexes"] == [[3, 0, 1, 2, 4, 5, 9, 6, 7, 8, 10]]
     assert len(result["sentences"]) == 1
     assert doc == original
     assert [c["source_tokens"] for c in result["changes"] if c["rule"] == "temporal-frame-first"] == [[3], [9]]
@@ -63,5 +63,5 @@ def test_named_subject_stays_atomic_inside_its_clause():
     doc = coordinated()
     doc["entities"] = [{"id": "Q1", "start_token": 6, "end_token": 6}]
     result = senses_to_gloss(doc, semantics=lambda _: True)
-    assert result["indexes"] == [[3, 0, 1, 2, 5, 9, 6, 7, 8]]
-    assert result["sentences"][0][6]["entities"] == doc["entities"]
+    assert result["indexes"] == [[3, 0, 1, 2, 4, 5, 9, 6, 7, 8, 10]]
+    assert result["sentences"][0][7]["entities"] == doc["entities"]

@@ -94,7 +94,7 @@ def main():
                     result = json.load(response)
             else:
                 result = senses_to_gloss(data, semantics=semantics.matches if semantics else None)
-            output = " | ".join(" ".join(t["word"] for t in s) for s in result["sentences"])
+            output = " | ".join(" ".join(t["word"] for t in s if t["pos"] != "PUNCT") for s in result["sentences"])
         results.append(
             {
                 "id": case["id"],

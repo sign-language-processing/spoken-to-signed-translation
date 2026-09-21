@@ -97,7 +97,7 @@ def test_coordinated_clauses_keep_one_sentence_through_http(client, monkeypatch)
     monkeypatch.setattr(server, "semantics", semantics)
     response = client.post("/senses-to-gloss", json=senses_request(senses=coordinated()))
     assert response.status_code == 200
-    assert response.json()["indexes"] == [[3, 0, 1, 2, 5, 9, 6, 7, 8]]
+    assert response.json()["indexes"] == [[3, 0, 1, 2, 4, 5, 9, 6, 7, 8, 10]]
     assert all(item["sentence"] == 0 for item in response.json()["sentences"][0])
 
 
