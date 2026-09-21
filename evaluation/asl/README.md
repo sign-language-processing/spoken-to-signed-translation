@@ -42,6 +42,7 @@ The existing Python token/GPT paths remain for comparison, not HTTP selection.
 | Temporal phrase extension | Quantity + resolved temporal unit + ago, attached to the root | Quantity and past direction retained; prepositional phrases unchanged |
 | Subject before auxiliary | Simple question with one unambiguous contiguous subject | Modal/tense/aspect auxiliaries themselves |
 | WH-final | Small initial WH phrase in a simple question | Complex/embedded questions, uncertain structures |
+| Independent coordination | Explicit conjunctions between subject-bearing clauses, with clause-local dependencies | Clause order, conjunctions, atomic meanings and original sentence boundary |
 | Default | Source SVO order | No blanket OSV or preposition/conjunction deletion |
 
 Time-first and WH-final are **canonicalization choices**, not universal ASL
@@ -69,6 +70,13 @@ does not supply a selected temporal relation for on/at; a verb allowlist cannot
 establish that role either. Both phrases therefore keep source order. The ago extension
 preserves both quantity and past direction. Complex-clause reordering remains
 deferred; guarded infinitive omission can apply locally without moving a clause.
+For clear independent coordination, existing rules run separately inside each
+clause. Each clause needs its own subject; no content dependency may cross the
+boundary. Conjunctions stay between clauses, and source coordinates and the
+original sentence boundary are unchanged. Shared-subject predicates, shared
+objects/modifiers, embedded clauses, questions, quotations and correlatives
+retain conservative source order. No second parse or contraction repair occurs
+here: the input is properly written text, normally normalized upstream.
 [WH questions require nonmanual grammar](https://www.lifeprint.com/asl101/pages-layout/whfacialexpression.htm),
 which this lexical plan does not render.
 
@@ -206,6 +214,12 @@ cases, 39/40 original cases (unchanged bare-yesterday abstention), 20/20 challen
 These are engineering regressions, not native-ASL accuracy measurements.
 Unit tests independently supply explicit trees to exercise guards and atomic
 span/provenance invariants without adding a spaCy model to the runtime or CI.
+
+`coordination.json` adds 11 positive/contrast cases, authored before the
+coordination implementation. Run with the same command and `--cases
+evaluation/asl/coordination.json`. The spaCy/WordNet setup above passes 11/11;
+the earlier 28/28 phrase, 39/40 original and 20/20 challenge scores are unchanged.
+These supplied-sense cases test rule behavior, not end-to-end WSD accuracy.
 
 ## Datasets researched
 

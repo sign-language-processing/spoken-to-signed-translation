@@ -10,6 +10,7 @@ from .types import GlossItem
 # Not a surface-word trigger: other meanings of "at" must keep their relation.
 EVENT_LOCATION = "wikidata-en-L3263-S2"  # At: indicating a location for an event.
 INFINITIVE_MARKER = "wikidata-en-L2985-S1"  # To: infinitive marker, not direction/recipient.
+EMBEDDED_CLAUSE_DEPS = {"ccomp", "xcomp", "advcl", "relcl", "csubj", "csubjpass", "acl", "parataxis"}
 
 
 def _head(item, tokens):
@@ -50,7 +51,7 @@ def _drop(item, tokens, children, root, question, items, semantics):
                     and semantics(governor["synsets"][0]["id"], "volition"))
     if token["lemma"] == "be":
         # Preserve existential, passive, progressive and elliptical constructions.
-        if token["dep"] != "ROOT" or any(t["dep"] == "expl" for t in children.get(index, [])):
+        if index != root or any(t["dep"] == "expl" for t in children.get(index, [])):
             return False
         if not any(t["dep"] in {"attr", "acomp", "prep", "advmod"} for t in children.get(index, [])):
             return False
@@ -194,18 +195,64 @@ def _subject_first(order, tokens, members, root, edits):
     return result
 
 
-def gloss_sentence(items, tokens, semantics=None):
-    """Ordered rules: safe omission → location/time frames → simple question ordering.
+def _independent_clauses(items, tokens, root):
+    """Partition only explicit subject-bearing coordination with no shared dependents."""
+    start, end = items[0]["start_token"], items[-1]["end_token"]
+    members = range(start, end + 1)
+    if any(tokens[i]["dep"] in EMBEDDED_CLAUSE_DEPS | {"mark", "preconj"}
+           or (tokens[i]["pos"] == "PUNCT" and tokens[i]["word"] not in {",", ".", "!"}) for i in members):
+        return []  # Embedded clauses, questions, quotations and correlatives need scope analysis.
+    roots = [i for i in members if i == root or tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"}]
+    if len(roots) < 2 or roots[0] != root or any(
+        tokens[r]["pos"] not in {"VERB", "AUX"} or tokens[r]["head"] not in roots for r in roots
+    ):
+        return []
+    connectors = [i for i in members if tokens[i]["dep"] == "cc"
+                  and tokens[i]["pos"] == "CCONJ" and tokens[i]["head"] in roots]
+    if len(connectors) != len(roots) - 1 or any(
+        not left < connector < right for left, connector, right in zip(roots, connectors, roots[1:])
+    ):
+        return []
+    parts = []
+    for clause_root, first, last in zip(roots, [start] + [i + 1 for i in connectors], connectors + [end + 1]):
+        positions = set(range(first, last))
+        if not any(tokens[i]["dep"] in {"nsubj", "nsubjpass"} and tokens[i]["head"] == clause_root for i in positions):
+            return []
+        if any(i != clause_root and tokens[i]["pos"] != "PUNCT" and tokens[i]["head"] not in positions
+               for i in positions):
+            return []  # No cross-clause objects, auxiliaries, or temporal modifiers.
+        part = _phrase_items(positions, items)
+        if not part:
+            return []  # Never cut an entity or multiword sense at a boundary.
+        parts.append((part, clause_root))
+    return parts
 
-    Uncertain or multi-clause syntax keeps source order. We never duplicate items,
-    split a WSD span, invent a sense, or drop a negation/modal/content word.
-    """
+
+def gloss_sentence(items, tokens, semantics=None):
+    """Apply rules locally to clear independent clauses; keep sentence/source coordinates."""
+    root = next(i for i in range(items[0]["start_token"], items[-1]["end_token"] + 1) if tokens[i]["dep"] == "ROOT")
+    parts = _independent_clauses(items, tokens, root)
+    if not parts:
+        return _gloss_clause(items, tokens, root, semantics)
+    order, edits, notes = [], [], []
+    for part, clause_root in parts:
+        if order:
+            # Keep the original conjunction between the original clauses.
+            order.append(next(i for i in items if i["start_token"] == part[0]["start_token"] - 1))
+        ordered, changes, warnings = _gloss_clause(part, tokens, clause_root, semantics)
+        order.extend(ordered)
+        edits.extend(changes)
+        notes.extend(code for code in warnings if code not in notes)
+    return order, edits, notes
+
+
+def _gloss_clause(items, tokens, root, semantics):
+    """Safe omission → location/time frames → simple question ordering."""
     members = set(range(items[0]["start_token"], items[-1]["end_token"] + 1))
-    root = next(i for i in members if tokens[i]["dep"] == "ROOT")
     question = any(tokens[i]["word"] == "?" for i in members)
     complex_clause = any(
-        tokens[i]["dep"] in {"ccomp", "xcomp", "advcl", "relcl", "csubj", "csubjpass", "acl", "parataxis"}
-        or (tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"})
+        tokens[i]["dep"] in EMBEDDED_CLAUSE_DEPS
+        or (i != root and tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"})
         for i in members
     )
     notes = ["complex-clause-order-preserved"] if complex_clause else []

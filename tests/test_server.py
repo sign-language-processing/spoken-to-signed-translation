@@ -89,6 +89,18 @@ def test_infinitive_semantics_through_http(client, monkeypatch):
     assert client.post("/senses-to-gloss", json=senses_request(senses=infinitive())).status_code == 503
 
 
+def test_coordinated_clauses_keep_one_sentence_through_http(client, monkeypatch):
+    from tests.test_asl_coordination import coordinated
+
+    semantics = MagicMock()
+    semantics.matches.return_value = True
+    monkeypatch.setattr(server, "semantics", semantics)
+    response = client.post("/senses-to-gloss", json=senses_request(senses=coordinated()))
+    assert response.status_code == 200
+    assert response.json()["indexes"] == [[3, 0, 1, 2, 5, 9, 6, 7, 8]]
+    assert all(item["sentence"] == 0 for item in response.json()["sentences"][0])
+
+
 @pytest.mark.parametrize(
     "options",
     [
