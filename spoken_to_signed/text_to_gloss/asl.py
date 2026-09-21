@@ -45,10 +45,16 @@ def _drop(item, tokens, children, root, question, items, semantics):
         governor = next((i for i in items if i["start_token"] == i["end_token"] == verb["head"]), None)
         # Both grammatical function and governor meaning must be known. Do not
         # erase unresolved modality/aspect or inspect inside an atomic meaning.
-        return bool(semantics and [s["id"] for s in item["synsets"]] == [INFINITIVE_MARKER]
-                    and verb["pos"] == "VERB" and verb["dep"] == "xcomp"
-                    and governor and not _protected(governor) and len(governor["synsets"]) == 1
-                    and semantics(governor["synsets"][0]["id"], "volition"))
+        return bool(
+            semantics
+            and [s["id"] for s in item["synsets"]] == [INFINITIVE_MARKER]
+            and verb["pos"] == "VERB"
+            and verb["dep"] == "xcomp"
+            and governor
+            and not _protected(governor)
+            and len(governor["synsets"]) == 1
+            and semantics(governor["synsets"][0]["id"], "volition")
+        )
     if token["lemma"] == "be":
         # Preserve existential, passive, progressive and elliptical constructions.
         if index != root or any(t["dep"] == "expl" for t in children.get(index, [])):
@@ -114,8 +120,16 @@ def _front_time(order, tokens, members, root, semantics, edits):
         ):
             continue  # Bare temporal nouns can be objects despite an npadvmod parse.
         if any(
-            tokens[p]["dep"] not in {
-                "npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case",
+            tokens[p]["dep"]
+            not in {
+                "npadvmod",
+                "advmod",
+                "amod",
+                "det",
+                "nummod",
+                "compound",
+                "poss",
+                "case",
             }
             or tokens[p]["pos"] in {"VERB", "AUX", "PUNCT"}
             for p in positions
@@ -151,14 +165,19 @@ def _front_location(order, tokens, members, root, edits):
         return order
     [head] = prepositions
     marker = next((i for i in order if i["start_token"] == i["end_token"] == head), None)
-    if (marker is None or _protected(marker) or tokens[head]["head"] != root
-            or [s["id"] for s in marker["synsets"]] != [EVENT_LOCATION]):
+    if (
+        marker is None
+        or _protected(marker)
+        or tokens[head]["head"] != root
+        or [s["id"] for s in marker["synsets"]] != [EVENT_LOCATION]
+    ):
         return order
     positions = _subtree(head, tokens, members)
     if not any(tokens[i]["dep"] == "pobj" and tokens[i]["pos"] in {"NOUN", "PROPN"} for i in positions):
         return order
-    if any(tokens[i]["dep"] not in {"prep", "pobj", "det", "amod", "compound", "poss", "case", "nummod"}
-           for i in positions):
+    if any(
+        tokens[i]["dep"] not in {"prep", "pobj", "det", "amod", "compound", "poss", "case", "nummod"} for i in positions
+    ):
         return order
     phrase = _phrase_items(positions, order)
     if not phrase:
@@ -199,16 +218,22 @@ def _independent_clauses(items, tokens, root):
     """Partition only explicit subject-bearing coordination with no shared dependents."""
     start, end = items[0]["start_token"], items[-1]["end_token"]
     members = range(start, end + 1)
-    if any(tokens[i]["dep"] in EMBEDDED_CLAUSE_DEPS | {"mark", "preconj"}
-           or (tokens[i]["pos"] == "PUNCT" and tokens[i]["word"] not in {",", ".", "!"}) for i in members):
+    if any(
+        tokens[i]["dep"] in EMBEDDED_CLAUSE_DEPS | {"mark", "preconj"}
+        or (tokens[i]["pos"] == "PUNCT" and tokens[i]["word"] not in {",", ".", "!"})
+        for i in members
+    ):
         return []  # Embedded clauses, questions, quotations and correlatives need scope analysis.
     roots = [i for i in members if i == root or tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"}]
-    if len(roots) < 2 or roots[0] != root or any(
-        tokens[r]["pos"] not in {"VERB", "AUX"} or tokens[r]["head"] not in roots for r in roots
+    if (
+        len(roots) < 2
+        or roots[0] != root
+        or any(tokens[r]["pos"] not in {"VERB", "AUX"} or tokens[r]["head"] not in roots for r in roots)
     ):
         return []
-    connectors = [i for i in members if tokens[i]["dep"] == "cc"
-                  and tokens[i]["pos"] == "CCONJ" and tokens[i]["head"] in roots]
+    connectors = [
+        i for i in members if tokens[i]["dep"] == "cc" and tokens[i]["pos"] == "CCONJ" and tokens[i]["head"] in roots
+    ]
     if len(connectors) != len(roots) - 1 or any(
         not left < connector < right for left, connector, right in zip(roots, connectors, roots[1:])
     ):
@@ -218,8 +243,9 @@ def _independent_clauses(items, tokens, root):
         positions = set(range(first, last))
         if not any(tokens[i]["dep"] in {"nsubj", "nsubjpass"} and tokens[i]["head"] == clause_root for i in positions):
             return []
-        if any(i != clause_root and tokens[i]["pos"] != "PUNCT" and tokens[i]["head"] not in positions
-               for i in positions):
+        if any(
+            i != clause_root and tokens[i]["pos"] != "PUNCT" and tokens[i]["head"] not in positions for i in positions
+        ):
             return []  # No cross-clause objects, auxiliaries, or temporal modifiers.
         part = _phrase_items(positions, items)
         if not part:
