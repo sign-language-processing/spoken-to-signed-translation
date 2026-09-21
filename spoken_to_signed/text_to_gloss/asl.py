@@ -10,10 +10,7 @@ from .types import GlossItem
 # Selected Wikidata lexical sense: "indicating a location for an event".
 # Not a surface-word trigger: other meanings of "at" must keep their relation.
 EVENT_LOCATION = "wikidata-en-L3263-S2"
-INFINITIVE_COMPLEMENTS = {"want", "need", "like", "try", "plan", "hope", "decide", "prefer"}
-# Syntax alone cannot distinguish "meet on Monday" from "reflect on Monday".
-# Limit PP fronting to these supported event predicates; unknown frames abstain.
-TEMPORAL_PP_PREDICATES = {"arrive", "leave", "meet", "work", "eat", "sleep", "visit", "call", "deposit"}
+INFINITIVE_MARKER = "wikidata-en-L2985-S1"
 
 
 def _head(item, tokens):
@@ -37,18 +34,21 @@ def _protected(item):
     )
 
 
-def _drop(item, tokens, children, root, question):
+def _drop(item, tokens, children, root, question, items, semantics):
     # A multiword meaning or named entity is indivisible, even if it contains "the".
     if item["start_token"] != item["end_token"] or _protected(item):
         return False
     index = item["start_token"]
     token = tokens[index]
-    if token["lemma"] == "to" and token["pos"] == "PART" and token["dep"] == "aux":
+    if token["pos"] == "PART" and token["dep"] == "aux":
         verb = tokens[token["head"]]
-        # Do not erase cues in unresolved constructions such as "used to",
-        # "have to", "remember to", ellipsis, or directional/recipient "to".
-        return (verb["pos"] == "VERB" and verb["dep"] == "xcomp"
-                and tokens[verb["head"]]["lemma"] in INFINITIVE_COMPLEMENTS)
+        governor = next((i for i in items if i["start_token"] == i["end_token"] == verb["head"]), None)
+        # Both grammatical function and governor meaning must be known. Do not
+        # erase unresolved modality/aspect or inspect inside an atomic meaning.
+        return bool(semantics and [s["id"] for s in item["synsets"]] == [INFINITIVE_MARKER]
+                    and verb["pos"] == "VERB" and verb["dep"] == "xcomp"
+                    and governor and not _protected(governor) and len(governor["synsets"]) == 1
+                    and semantics(governor["synsets"][0]["id"], "volition"))
     if token["lemma"] == "be":
         # Preserve existential, passive, progressive and elliptical constructions.
         if token["dep"] != "ROOT" or any(t["dep"] == "expl" for t in children.get(index, [])):
@@ -82,10 +82,8 @@ def _time_frame_head(head, tokens, root):
     """Locate the whole temporal adjunct, retaining its relational words."""
     token = tokens[head]
     parent = tokens[token["head"]]
-    if token["dep"] == "pobj" and token.get("ent_type") in {"DATE", "TIME"}:
-        if (parent["dep"] == "prep" and parent["lemma"] in {"on", "at"} and parent["head"] == root
-                and tokens[root]["pos"] == "VERB" and tokens[root]["lemma"] in TEMPORAL_PP_PREDICATES):
-            return token["head"]
+    # A time-valued pobj does not establish a temporal adjunct ("reflect on
+    # Monday"). Leave PPs until WSD provides their temporal relational sense.
     if token["dep"] == "npadvmod" and parent["lemma"] == "ago" and parent["dep"] == "advmod":
         if parent["head"] == root:
             return token["head"]
@@ -117,7 +115,7 @@ def _front_time(order, tokens, members, root, semantics, edits):
             continue  # Bare temporal nouns can be objects despite an npadvmod parse.
         if any(
             tokens[p]["dep"] not in {
-                "npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case", "prep", "pobj",
+                "npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case",
             }
             or tokens[p]["pos"] in {"VERB", "AUX", "PUNCT"}
             for p in positions
@@ -213,7 +211,7 @@ def gloss_sentence(items, tokens, semantics=None):
     )
     notes = ["complex-clause-order-preserved"] if complex_clause else []
     if semantics is None:
-        notes.append("temporal-semantics-unavailable")
+        notes.append("semantic-rules-unavailable")
     if question:
         notes.append("question-nonmanuals-not-realized")
     edits = []
@@ -222,7 +220,7 @@ def gloss_sentence(items, tokens, semantics=None):
         children.setdefault(tokens[i]["head"], []).append(tokens[i])
     order = []
     for item in items:
-        if _drop(item, tokens, children, root, question):
+        if _drop(item, tokens, children, root, question, items, semantics):
             edits.append({"rule": "omit-function-word", "source_tokens": [item["start_token"]]})
         else:
             order.append(item)

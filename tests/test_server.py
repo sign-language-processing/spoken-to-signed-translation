@@ -65,11 +65,28 @@ def test_senses_endpoint_needs_no_model(client):
     assert response.json()["indexes"] == [[0]]
     assert response.json()["sentences"][0][0]["word"] == "hello"
     assert response.headers["X-Model-Tag"] == "test-build"
-    assert response.json()["notes"] == [{"sentence": 0, "code": "temporal-semantics-unavailable"}]
+    assert response.json()["notes"] == [{"sentence": 0, "code": "semantic-rules-unavailable"}]
 
 
 def test_retired_endpoint(client):
     assert client.post("/tokens-to-gloss", json=request([])).status_code == 404
+
+
+def test_infinitive_semantics_through_http(client, monkeypatch):
+    from spoken_to_signed.text_to_gloss.wordnet import WordNet, WordNetUnavailableError
+    from tests.test_asl_phrases import infinitive
+
+    semantics = WordNet("http://wordnet")
+    monkeypatch.setattr(server, "semantics", semantics)
+    response = client.post("/senses-to-gloss", json=senses_request(senses=infinitive()))
+    assert response.status_code == 200
+    assert response.json()["indexes"] == [[0, 1, 3]]
+
+    def unavailable(*args, **kwargs):
+        raise WordNetUnavailableError("offline")
+
+    monkeypatch.setattr(semantics, "matches", unavailable)
+    assert client.post("/senses-to-gloss", json=senses_request(senses=infinitive())).status_code == 503
 
 
 @pytest.mark.parametrize(
@@ -161,4 +178,4 @@ def test_request_limits(client):
 def test_sentence_metadata_survives_flattening(client):
     result = client.post("/senses-to-gloss", json=senses_request()).json()
     assert result["sentences"][0][0]["sentence"] == 0
-    assert result["sentences"][0][0]["notes"] == ["temporal-semantics-unavailable"]
+    assert result["sentences"][0][0]["notes"] == ["semantic-rules-unavailable"]

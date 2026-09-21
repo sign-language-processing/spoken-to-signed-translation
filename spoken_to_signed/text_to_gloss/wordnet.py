@@ -14,6 +14,9 @@ TIME_ROOTS = {"omw-en-15113229-n", "omw-en-15180528-n", "omw-en-15154774-n", "om
 # WordNet adverbs have no hypernym hierarchy. These are exact selected senses,
 # not word triggers: yesterday (literal/recent), tomorrow, today (literal), tonight.
 TIME_ADVERBS = {"omw-en-00507716-r", "omw-en-00507819-r", "omw-en-00479275-r", "omw-en-00207366-r", "omw-en-00079499-r"}
+# Desire, intend (a purpose), attempt: narrow OMW concepts, not a verb list.
+VOLITION_ROOTS = {"omw-en-01825237-v", "omw-en-00708538-v", "omw-en-02530167-v"}
+SEMANTIC_ROOTS = {"time": TIME_ROOTS | TIME_ADVERBS, "volition": VOLITION_ROOTS}
 
 
 class WordNetUnavailableError(RuntimeError):
@@ -42,20 +45,21 @@ class WordNet:
                 for item in relations.get(relation, {}).get("data", [])
             )
         except HTTPError as error:
-            if error.code == 404 and synset not in TIME_ROOTS | TIME_ADVERBS:
+            if error.code == 404 and synset not in TIME_ROOTS | TIME_ADVERBS | VOLITION_ROOTS:
                 return ()  # A valid but unsupported sense has no known ancestry.
             raise WordNetUnavailableError("WordNet semantic lookup failed") from error
         except (URLError, TimeoutError, ValueError, KeyError, TypeError) as error:
             raise WordNetUnavailableError("WordNet semantic lookup failed") from error
 
-    def is_time(self, synset: str, *, deadline: float | None = None) -> bool:
+    def matches(self, synset: str, category: str = "time", *, deadline: float | None = None) -> bool:
+        roots = SEMANTIC_ROOTS[category]
         deadline = deadline if deadline is not None else monotonic() + 10
         pending, seen = [synset], set()
         while pending:
             if monotonic() >= deadline:
                 raise WordNetUnavailableError("WordNet semantic lookup exceeded time budget")
             current = pending.pop()
-            if current in TIME_ROOTS or current in TIME_ADVERBS:
+            if current in roots:
                 return True
             if current in seen:
                 continue

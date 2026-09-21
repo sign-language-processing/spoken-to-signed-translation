@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from spoken_to_signed.text_to_gloss.senses import senses_to_gloss
+from spoken_to_signed.text_to_gloss.wordnet import WordNet
 from tests.test_senses_rules import parsed
 
 
@@ -13,20 +14,23 @@ def words(document, semantics=None):
     return [item["word"] for item in senses_to_gloss(document, semantics=semantics)["sentences"][0]]
 
 
-def infinitive(governor="want"):
+def infinitive(governor="want", sense="omw-en-01825237-v"):
     return parsed([
         ("I", "i", "PRON", "nsubj", 1),
         (governor, governor, "VERB", "ROOT", 1),
         ("to", "to", "PART", "aux", 3),
         ("sleep", "sleep", "VERB", "xcomp", 1),
-    ])
+    ], synsets=[{"id": sense, "start_token": 1, "end_token": 1},
+                {"id": "wikidata-en-L2985-S1", "start_token": 2, "end_token": 2}])
 
 
-@pytest.mark.parametrize("governor", ["want", "need", "like", "try", "plan", "hope", "decide", "prefer"])
-def test_supported_infinitival_complement(governor):
+@pytest.mark.parametrize("governor", ["want", "wish", "desire", "unseen-word"])
+def test_infinitival_complement_uses_meaning_not_spelling(governor):
     doc = infinitive(governor)
     original = deepcopy(doc)
-    assert words(doc) == ["I", governor, "sleep"]
+    semantics = Mock(return_value=True)
+    assert words(doc, semantics) == ["I", governor, "sleep"]
+    semantics.assert_called_once_with("omw-en-01825237-v", "volition")
     assert doc == original
 
 
@@ -35,18 +39,48 @@ def test_unresolved_modality_aspect_and_retrospective_complements(governor):
     assert words(infinitive(governor)) == ["I", governor, "to", "sleep"]
 
 
+@pytest.mark.parametrize("protection", [
+    "missing", "ambiguous", "non-volitional", "marker-sense", "atomic-governor", "entity-governor",
+])
+def test_infinitive_requires_selected_marker_and_governor_senses(protection):
+    doc = infinitive()
+    semantics = Mock(return_value=True)
+    if protection == "missing":
+        doc["synsets"].pop(0)
+    elif protection == "ambiguous":
+        doc["synsets"].append({**doc["synsets"][0], "id": "other"})
+    elif protection == "non-volitional":
+        semantics.return_value = False
+    elif protection == "marker-sense":
+        doc["synsets"][1]["id"] = "directional-to"
+    elif protection == "entity-governor":
+        doc["entities"] = [{"id": "Q1", "start_token": 1, "end_token": 1}]
+    else:
+        doc["synsets"][0]["start_token"] = 0
+    assert "to" in words(doc, semantics)
+    if protection != "non-volitional":
+        semantics.assert_not_called()
+
+
+def test_same_lemma_different_selected_sense(monkeypatch):
+    semantics = WordNet("http://wordnet")
+    monkeypatch.setattr(semantics, "parents", lambda _: ())
+    assert words(infinitive("want", "omw-en-01825237-v"), semantics.matches) == ["I", "want", "sleep"]
+    assert words(infinitive("want", "omw-en-02632567-v"), semantics.matches) == ["I", "want", "to", "sleep"]
+
+
 @pytest.mark.parametrize("protection", ["entity", "meaning", "preposition", "ellipsis"])
 def test_to_omission_requires_unprotected_infinitival_syntax(protection):
     doc = infinitive()
     if protection in {"entity", "meaning"}:
         key = "entities" if protection == "entity" else "synsets"
         doc[key] = [{"id": "protected", "start_token": 2, "end_token": 3}]
-        assert words(doc) == ["I", "want", "to sleep"]
+        assert words(doc, Mock(return_value=True)) == ["I", "want", "to sleep"]
     else:
         doc["tokens"][2].update(pos="ADP", dep="prep", head=1)
         if protection == "preposition":
             doc["tokens"][3].update(word="school", pos="NOUN", dep="pobj", head=2)
-        assert "to" in words(doc)
+        assert "to" in words(doc, Mock(return_value=True))
 
 
 def temporal(preposition="on"):
@@ -61,12 +95,9 @@ def temporal(preposition="on"):
 
 
 @pytest.mark.parametrize("preposition", ["on", "at"])
-def test_whole_temporal_prepositional_phrase(preposition):
+def test_temporal_noun_does_not_prove_temporal_pp_role(preposition):
     doc = temporal(preposition)
-    assert words(doc, lambda _: True) == [preposition, "Monday", "We", "meet"]
-    assert senses_to_gloss(doc, semantics=lambda _: True)["changes"] == [
-        {"sentence": 0, "rule": "temporal-frame-first", "source_tokens": [2, 3]},
-    ]
+    assert words(doc, lambda _: True) == ["We", "meet", preposition, "Monday"]
 
 
 @pytest.mark.parametrize("preposition", ["for", "in", "since", "until", "before", "after"])

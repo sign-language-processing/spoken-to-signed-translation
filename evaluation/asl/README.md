@@ -36,10 +36,10 @@ The existing Python token/GPT paths remain for comparison, not HTTP selection.
 | Article omission | A singleton a/an/the tagged DET, outside entities | Possessives, demonstratives, atomic meanings |
 | Present copula omission | Present AUX be, dependency ROOT with a complement | Existential there, passive, progressive, ellipsis, past |
 | Do-support omission | Present AUX do/does with syntactic negation or in a root question | Emphatic affirmative do, lexical do, past did |
-| Infinitival to omission | Singleton PART/aux of a VERB/xcomp under want, need, like, try, plan, hope, decide or prefer | Recipient/direction, ellipsis, atomic spans; unresolved used-to, have-to, remember-to |
+| Infinitival to omission | Selected infinitive-marker sense; PART/aux of a VERB/xcomp under a selected desire/intention/attempt sense | Unknown/ambiguous senses, recipient/direction, ellipsis, atomic spans; unresolved modality/aspect |
 | Event-location frame | Exact selected event-location sense of at; single simple PP on an affirmative transitive root | Unknown/target senses, noun attachment, questions, auxiliaries, negation, focus, multiple PPs |
 | Temporal frame first | Resolved temporal sense, root adverbial, whole contiguous phrase | Objects, durations, embedded clauses, protected entities |
-| Temporal phrase extensions | on/at + DATE/TIME noun under a supported event predicate; or quantity + temporal unit + ago | Prepositions and ago retained; ambiguous PP predicates, for/in/since/until relations unchanged |
+| Temporal phrase extension | Quantity + resolved temporal unit + ago, attached to the root | Quantity and past direction retained; prepositional phrases unchanged |
 | Subject before auxiliary | Simple question with one unambiguous contiguous subject | Modal/tense/aspect auxiliaries themselves |
 | WH-final | Small initial WH phrase in a simple question | Complex/embedded questions, uncertain structures |
 | Default | Source SVO order | No blanket OSV or preposition/conjunction deletion |
@@ -63,10 +63,10 @@ spatial/nonmanual realization is still missing. Other senses of at remain.
 The exact sense `wikidata-en-L3263-S2` was verified through the WordNet API:
 "indicating a location for an event" (S1 is an action's target).
 
-Temporal PP fronting additionally requires one of the supported root predicates
-in `TEMPORAL_PP_PREDICATES`: parse attachment and a temporal noun alone cannot
-distinguish "meet on Monday" from "reflect on Monday". The prepositions remain
-because reordering does not license erasing their relation. The ago extension
+Temporal PP fronting is deferred: parse attachment and a temporal noun alone
+cannot distinguish "meet on Monday" from "reflect on Monday". The current lexicon
+does not supply a selected temporal relation for on/at; a verb allowlist cannot
+establish that role either. Both phrases therefore keep source order. The ago extension
 preserves both quantity and past direction. Complex-clause reordering remains
 deferred; guarded infinitive omission can apply locally without moving a clause.
 [WH questions require nonmanual grammar](https://www.lifeprint.com/asl101/pages-layout/whfacialexpression.htm),
@@ -80,6 +80,15 @@ Temporal roots in OMW English 1.4 are `15113229-n` (time period), `15180528-n`
 (point in time), `15154774-n` (time unit), and `15129927-n` (time-of-day reading),
 with `omw-en-` prefixes. Clock times such as noon follow a measurement/reading
 ancestry rather than the other three roots; this was verified through the API.
+
+Infinitive omission requires `wikidata-en-L2985-S1` (infinitive marker) and a
+singleton governor sense under `01825237-v` (desire), `00708538-v` (intend a
+purpose), or `02530167-v` (attempt). These OMW roots and their wish/plan descendants
+were verified through the API. A different sense of the same verb does not match.
+Missing senses or unsupported classes (including some need/like/decide senses)
+keep the marker; this is deliberately narrower than a surface-verb allowlist.
+Without a semantic adapter the result reports `semantic-rules-unavailable` and
+skips both time fronting and infinitive omission.
 
 [Adverbs do not have noun-style hypernym chains](https://wordnet.princeton.edu/documentation/wninput5wn).
 `TIME_ADVERBS` lists five exact
@@ -181,7 +190,7 @@ overlapping spans, semantic outages, entity protection and source preservation.
 
 ### Phrase-rule regression run
 
-`phrases.json` contains 25 original positive/contrast cases for the new rules.
+`phrases.json` contains 28 original positive/contrast cases for the new rules.
 Run it with real spaCy syntax and the WordNet container:
 
 ```bash
@@ -189,10 +198,11 @@ PYTHONPATH=. python evaluation/asl/evaluate.py --cases evaluation/asl/phrases.js
   --wordnet-url http://localhost:8080 --output /tmp/asl-phrases.json
 ```
 
-With spaCy 3.8.16 / en_core_web_lg 3.8.0 and WordNet v1.8.0: 25/25 phrase
-cases, 39/40 original cases (the same bare-yesterday abstention), 20/20 challenge
-cases. One challenge expectation intentionally changed: "I want to buy a book"
-now omits infinitival to. The original held-out references are unchanged.
+The sense-aware revision supplies marker/governor senses explicitly for infinitive
+cases, adds synonym/missing/wrong-sense contrasts, and changes temporal PP
+expectations to conservative preservation. The original held-out references are unchanged.
+With spaCy 3.8.16 / en_core_web_lg 3.8.0 and WordNet v1.8.0: 28/28 phrase
+cases, 39/40 original cases (unchanged bare-yesterday abstention), 20/20 challenge cases.
 These are engineering regressions, not native-ASL accuracy measurements.
 Unit tests independently supply explicit trees to exercise guards and atomic
 span/provenance invariants without adding a spaCy model to the runtime or CI.

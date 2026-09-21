@@ -42,22 +42,22 @@ def test_whole_time_phrase_and_provenance():
     doc = time_document()
     original = deepcopy(doc)
     semantics = Mock()
-    semantics.is_time.return_value = True
-    result = senses_to_gloss(doc, semantics=semantics.is_time)
+    semantics.matches.return_value = True
+    result = senses_to_gloss(doc, semantics=semantics.matches)
     assert result["indexes"] == [[2, 3, 0, 1]]
     assert result["changes"] == [
         {"sentence": 0, "rule": "temporal-frame-first", "source_tokens": [2, 3]},
         {"sentence": 0, "rule": "omit-punctuation", "source_tokens": [4]},
     ]
     assert doc == original
-    semantics.is_time.assert_called_once_with("omw-en-15164105-n")
+    semantics.matches.assert_called_once_with("omw-en-15164105-n")
 
 
 def test_semantics_are_required_not_guessed_from_word():
     assert senses_to_gloss(time_document())["indexes"] == [[0, 1, 2, 3]]
     semantics = Mock()
-    semantics.is_time.return_value = False
-    assert senses_to_gloss(time_document(), semantics=semantics.is_time)["indexes"] == [[0, 1, 2, 3]]
+    semantics.matches.return_value = False
+    assert senses_to_gloss(time_document(), semantics=semantics.matches)["indexes"] == [[0, 1, 2, 3]]
 
 
 def test_atomic_time_phrase_moves_without_splitting():
@@ -77,8 +77,8 @@ def test_temporal_looking_entities_and_objects_are_not_frames(protection):
         doc["tokens"][3]["ent_type"] = "WORK_OF_ART"
     else:
         doc["tokens"][3]["dep"] = "dobj"
-    semantics = Mock(is_time=lambda _: True)
-    assert senses_to_gloss(doc, semantics=semantics.is_time)["changes"] == [
+    semantics = Mock(matches=lambda _: True)
+    assert senses_to_gloss(doc, semantics=semantics.matches)["changes"] == [
         {"sentence": 0, "rule": "omit-punctuation", "source_tokens": [4]},
     ]
 
