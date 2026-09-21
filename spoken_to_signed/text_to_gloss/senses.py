@@ -105,8 +105,9 @@ def _validate_tree(tokens, start, end):
 def senses_to_gloss(document: dict, *, semantics=None) -> dict:
     """WSD document → aligned ASL candidates. No parsing, lookup of signs, or LLM.
 
-    ``semantics`` optionally is a callable ``is_time(synset_id)``. Without it, time
-    ordering is skipped explicitly. Indexes address prepare_tokens(document),
+    ``semantics`` optionally is a callable ``matches(synset_id, category="time")``
+    supporting time and volition. Without it, semantic rules are skipped explicitly.
+    Indexes address prepare_tokens(document),
     while each candidate and change keeps inclusive original-token coordinates.
     """
     from .asl import gloss_sentence

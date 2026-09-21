@@ -9,7 +9,7 @@
   {"id":"relative-time","text":"The woman who arrived yesterday is my teacher.","senses":{"yesterday":"omw-en-15156187-n"},"expected":["woman who arrived yesterday my teacher"]},
   {"id":"conditional","text":"If it rains, we will stay home.","expected":["If it rains we will stay home"]},
   {"id":"coordination","text":"I bought a book and she read it.","expected":["I bought book and she read it"]},
-  {"id":"infinitive","text":"I want to buy a book.","expected":["I want to buy book"]},
+  {"id":"infinitive","text":"I want to buy a book.","senses":{"want":"omw-en-01825237-v","to":"wikidata-en-L2985-S1"},"expected":["I want buy book"],"note":"Selected desire and infinitive-marker senses license omission; both supplied explicitly."},
   {"id":"imperative","text":"Please open the window.","expected":["Please open window"]},
   {"id":"negative-imperative","text":"Do not open the window.","expected":["not open window"]},
   {"id":"title","text":"The movie Yesterday is popular.","senses":{"Yesterday":"omw-en-15156187-n"},"expected":["movie Yesterday popular"],"note":"Deliberately wrong temporal sense probes false time movement."},

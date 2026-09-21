@@ -1,0 +1,13 @@
+[
+  {"id":"two-times","text":"I bought a book yesterday, and she will sell it tomorrow.","senses":{"yesterday":"omw-en-15156187-n","tomorrow":"omw-en-15155891-n"},"expected":["yesterday I bought book and tomorrow she will sell it"]},
+  {"id":"no-comma","text":"I bought a book yesterday and she sold a car today.","senses":{"yesterday":"omw-en-15156187-n","today":"omw-en-15156001-n"},"expected":["yesterday I bought book and today she sold car"]},
+  {"id":"contrast","text":"I did not buy a book yesterday, but she bought a car today.","senses":{"yesterday":"omw-en-15156187-n","today":"omw-en-15156001-n"},"expected":["yesterday I did not buy book but today she bought car"]},
+  {"id":"three-clauses","text":"I bought a book yesterday, and she bought a car today, and they will buy a house tomorrow.","senses":{"yesterday":"omw-en-15156187-n","today":"omw-en-15156001-n","tomorrow":"omw-en-15155891-n"},"expected":["yesterday I bought book and today she bought car and tomorrow they will buy house"]},
+  {"id":"noun-coordination","text":"I bought books and magazines yesterday, and she sold a car today.","senses":{"yesterday":"omw-en-15156187-n","today":"omw-en-15156001-n"},"expected":["yesterday I bought books and magazines and today she sold car"]},
+  {"id":"copulas","text":"I am a teacher, and she is a doctor.","expected":["I teacher and she doctor"]},
+  {"id":"shared-subject","text":"I bought a book and read it yesterday.","senses":{"yesterday":"omw-en-15156187-n"},"expected":["I bought book and read it yesterday"]},
+  {"id":"embedded","text":"I know he bought a book yesterday, and she will sell it tomorrow.","senses":{"yesterday":"omw-en-15156187-n","tomorrow":"omw-en-15155891-n"},"expected":["I know he bought book yesterday and she will sell it tomorrow"]},
+  {"id":"conditional","text":"If I buy a book today, she will read it tomorrow.","senses":{"today":"omw-en-15156001-n","tomorrow":"omw-en-15155891-n"},"expected":["If I buy book today she will read it tomorrow"]},
+  {"id":"semicolon","text":"I bought a book yesterday; she sold a car today.","senses":{"yesterday":"omw-en-15156187-n","today":"omw-en-15156001-n"},"expected":["I bought book yesterday she sold car today"],"note":"No explicit conjunction: defer ambiguous parataxis."},
+  {"id":"coordinated-question","text":"Did I buy a book yesterday, and will she sell it tomorrow?","senses":{"yesterday":"omw-en-15156187-n","tomorrow":"omw-en-15155891-n"},"expected":["Did I buy book yesterday and will she sell it tomorrow"],"note":"Question scope is not resolved by this rule."}
+]

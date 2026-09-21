@@ -19,7 +19,7 @@ The stages are explicit functions, not a rule-engine framework:
 1. Validate sentence partitions and dependency trees.
 2. Group WSD meanings into atomic candidates; retain original tokens and annotations.
 3. Apply guarded omissions within each sentence.
-4. Optionally front a semantically temporal, syntactically adverbial phrase.
+4. Establish guarded location and temporal frames without splitting phrases.
 5. Normalize simple question order and retain source alignment.
 6. Omit standalone punctuation after interpreting it; retain sentence boundaries and question notes.
 
@@ -36,9 +36,13 @@ The existing Python token/GPT paths remain for comparison, not HTTP selection.
 | Article omission | A singleton a/an/the tagged DET, outside entities | Possessives, demonstratives, atomic meanings |
 | Present copula omission | Present AUX be, dependency ROOT with a complement | Existential there, passive, progressive, ellipsis, past |
 | Do-support omission | Present AUX do/does with syntactic negation or in a root question | Emphatic affirmative do, lexical do, past did |
+| Infinitival to omission | Selected infinitive-marker sense; PART/aux of a VERB/xcomp under a selected desire/intention/attempt sense | Unknown/ambiguous senses, recipient/direction, ellipsis, atomic spans; unresolved modality/aspect |
+| Event-location frame | Exact selected event-location sense of at; single simple PP on an affirmative transitive root | Unknown/target senses, noun attachment, questions, auxiliaries, negation, focus, multiple PPs |
 | Temporal frame first | Resolved temporal sense, root adverbial, whole contiguous phrase | Objects, durations, embedded clauses, protected entities |
+| Temporal phrase extension | Quantity + resolved temporal unit + ago, attached to the root | Quantity and past direction retained; prepositional phrases unchanged |
 | Subject before auxiliary | Simple question with one unambiguous contiguous subject | Modal/tense/aspect auxiliaries themselves |
 | WH-final | Small initial WH phrase in a simple question | Complex/embedded questions, uncertain structures |
+| Independent coordination | Explicit conjunctions between subject-bearing clauses, with clause-local dependencies | Clause order, conjunctions, atomic meanings and original sentence boundary |
 | Default | Source SVO order | No blanket OSV or preposition/conjunction deletion |
 
 Time-first and WH-final are **canonicalization choices**, not universal ASL
@@ -52,6 +56,27 @@ The omission policy is informed by [ASL grammar](https://www.lifeprint.com/asl10
 and [be-verbs](https://www.lifeprint.com/asl101/pages-signs/b/be-verbs.htm).
 Keeping auxiliaries in unresolved constructions is an engineering safeguard,
 **not** a claim that ASL signs those English auxiliaries.
+The new omissions are informed by [infinitives and incorporated prepositions](https://www.lifeprint.com/asl101/topics/preprositions-asl-preposition-incorporation-or-drop.htm).
+Event-location fronting is a narrow canonicalization choice, not a claim that
+all ASL locations come first. It retains the location phrase, omits only the
+resolved event-locative marker, and keeps pronouns/possessives. The location's
+spatial/nonmanual realization is still missing. Other senses of at remain.
+The exact sense `wikidata-en-L3263-S2` was verified through the WordNet API:
+"indicating a location for an event" (S1 is an action's target).
+
+Temporal PP fronting is deferred: parse attachment and a temporal noun alone
+cannot distinguish "meet on Monday" from "reflect on Monday". The current lexicon
+does not supply a selected temporal relation for on/at; a verb allowlist cannot
+establish that role either. Both phrases therefore keep source order. The ago extension
+preserves both quantity and past direction. Complex-clause reordering remains
+deferred; guarded infinitive omission can apply locally without moving a clause.
+For clear independent coordination, existing rules run separately inside each
+clause. Each clause needs its own subject; no content dependency may cross the
+boundary. Conjunctions stay between clauses, and source coordinates and the
+original sentence boundary are unchanged. Shared-subject predicates, shared
+objects/modifiers, embedded clauses, questions, quotations and correlatives
+retain conservative source order. No second parse or contraction repair occurs
+here: the input is properly written text, normally normalized upstream.
 [WH questions require nonmanual grammar](https://www.lifeprint.com/asl101/pages-layout/whfacialexpression.htm),
 which this lexical plan does not render.
 
@@ -60,14 +85,28 @@ which this lexical plan does not render.
 The adapter follows `hypernym` and `instance_hypernym` in the existing WordNet
 API using **selected sense IDs**, never a new lookup of the surface word.
 Temporal roots in OMW English 1.4 are `15113229-n` (time period), `15180528-n`
-(point in time), and `15154774-n` (time unit), with `omw-en-` prefixes.
+(point in time), `15154774-n` (time unit), and `15129927-n` (time-of-day reading),
+with `omw-en-` prefixes. Clock times such as noon follow a measurement/reading
+ancestry rather than the other three roots; this was verified through the API.
+
+Infinitive omission requires `wikidata-en-L2985-S1` (infinitive marker) and a
+singleton governor sense under `01825237-v` (desire), `00708538-v` (intend a
+purpose), or `02530167-v` (attempt). These OMW roots and their wish/plan descendants
+were verified through the API. A different sense of the same verb does not match.
+Missing senses or unsupported classes (including some need/like/decide senses)
+keep the marker; this is deliberately narrower than a surface-verb allowlist.
+Without a semantic adapter the result reports `semantic-rules-unavailable` and
+skips both time fronting and infinitive omission.
 
 [Adverbs do not have noun-style hypernym chains](https://wordnet.princeton.edu/documentation/wninput5wn).
 `TIME_ADVERBS` lists five exact
 selected senses for yesterday, tomorrow, today and tonight, checked against the
 local WordNet API. It is deliberately incomplete: unknown senses keep their
 position. A title named Yesterday is not temporal just because of its spelling.
-Linked entities and non-temporal NER categories are protected.
+Time classification excludes linked entities and non-temporal NER categories,
+so a name cannot become a temporal frame. This is not a global ban on moving
+entities: location phrases and question subjects can move as whole units with
+all their annotations intact. No omission rule may split or delete an entity.
 
 Taxonomy is necessary but insufficient. spaCy parses both “I remember yesterday”
 and “They left yesterday” with a bare NOUN temporal adverbial. We abstain from
@@ -156,6 +195,31 @@ PYTHONPATH=. python evaluation/asl/evaluate.py --wsd-url http://localhost:8081 \
 review. Without it, the runner prints compact results. Generated runs are not
 committed. The unit suite checks invalid/cyclic/cross-sentence trees, atomic and
 overlapping spans, semantic outages, entity protection and source preservation.
+
+### Phrase-rule regression run
+
+`phrases.json` contains 28 original positive/contrast cases for the new rules.
+Run it with real spaCy syntax and the WordNet container:
+
+```bash
+PYTHONPATH=. python evaluation/asl/evaluate.py --cases evaluation/asl/phrases.json \
+  --wordnet-url http://localhost:8080 --output /tmp/asl-phrases.json
+```
+
+The sense-aware revision supplies marker/governor senses explicitly for infinitive
+cases, adds synonym/missing/wrong-sense contrasts, and changes temporal PP
+expectations to conservative preservation. The original held-out references are unchanged.
+With spaCy 3.8.16 / en_core_web_lg 3.8.0 and WordNet v1.8.0: 28/28 phrase
+cases, 39/40 original cases (unchanged bare-yesterday abstention), 20/20 challenge cases.
+These are engineering regressions, not native-ASL accuracy measurements.
+Unit tests independently supply explicit trees to exercise guards and atomic
+span/provenance invariants without adding a spaCy model to the runtime or CI.
+
+`coordination.json` adds 11 positive/contrast cases, authored before the
+coordination implementation. Run with the same command and `--cases
+evaluation/asl/coordination.json`. The spaCy/WordNet setup above passes 11/11;
+the earlier 28/28 phrase, 39/40 original and 20/20 challenge scores are unchanged.
+These supplied-sense cases test rule behavior, not end-to-end WSD accuracy.
 
 ## Datasets researched
 

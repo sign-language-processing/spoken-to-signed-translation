@@ -7,6 +7,11 @@ aspect and nonmanuals still need a realization stage. See evaluation/asl/README.
 from .rules import _asl_question_length, _omit_asl
 from .types import GlossItem
 
+# Not a surface-word trigger: other meanings of "at" must keep their relation.
+EVENT_LOCATION = "wikidata-en-L3263-S2"  # At: indicating a location for an event.
+INFINITIVE_MARKER = "wikidata-en-L2985-S1"  # To: infinitive marker, not direction/recipient.
+EMBEDDED_CLAUSE_DEPS = {"ccomp", "xcomp", "advcl", "relcl", "csubj", "csubjpass", "acl", "parataxis"}
+
 
 def _head(item, tokens):
     start, end = item["start_token"], item["end_token"]
@@ -29,15 +34,30 @@ def _protected(item):
     )
 
 
-def _drop(item, tokens, children, root, question):
+def _drop(item, tokens, children, root, question, items, semantics):
     # A multiword meaning or named entity is indivisible, even if it contains "the".
     if item["start_token"] != item["end_token"] or _protected(item):
         return False
     index = item["start_token"]
     token = tokens[index]
+    if token["pos"] == "PART" and token["dep"] == "aux":
+        verb = tokens[token["head"]]
+        governor = next((i for i in items if i["start_token"] == i["end_token"] == verb["head"]), None)
+        # Both grammatical function and governor meaning must be known. Do not
+        # erase unresolved modality/aspect or inspect inside an atomic meaning.
+        return bool(
+            semantics
+            and [s["id"] for s in item["synsets"]] == [INFINITIVE_MARKER]
+            and verb["pos"] == "VERB"
+            and verb["dep"] == "xcomp"
+            and governor
+            and not _protected(governor)
+            and len(governor["synsets"]) == 1
+            and semantics(governor["synsets"][0]["id"], "volition")
+        )
     if token["lemma"] == "be":
         # Preserve existential, passive, progressive and elliptical constructions.
-        if token["dep"] != "ROOT" or any(t["dep"] == "expl" for t in children.get(index, [])):
+        if index != root or any(t["dep"] == "expl" for t in children.get(index, [])):
             return False
         if not any(t["dep"] in {"attr", "acomp", "prep", "advmod"} for t in children.get(index, [])):
             return False
@@ -64,6 +84,20 @@ def _phrase_items(positions, order):
     return selected
 
 
+def _time_frame_head(head, tokens, root):
+    """Locate the whole temporal adjunct, retaining its relational words."""
+    token = tokens[head]
+    parent = tokens[token["head"]]
+    # A time-valued pobj does not establish a temporal adjunct ("reflect on
+    # Monday"). Leave PPs until WSD provides their temporal relational sense.
+    if token["dep"] == "npadvmod" and parent["lemma"] == "ago" and parent["dep"] == "advmod":
+        if parent["head"] == root:
+            return token["head"]
+    if token["head"] == root and token["dep"] in {"npadvmod", "advmod"}:
+        return head
+    return None
+
+
 def _front_time(order, tokens, members, root, semantics, edits):
     if semantics is None:
         return order
@@ -73,13 +107,12 @@ def _front_time(order, tokens, members, root, semantics, edits):
         if head is None or _protected(item):
             continue
         token = tokens[head]
-        # An object meaning "yesterday" is not a temporal frame. Nor is a
-        # duration introduced by "for", or time inside a subordinate clause.
-        if token["head"] != root or token["dep"] not in {"npadvmod", "advmod"}:
+        frame = _time_frame_head(head, tokens, root)
+        if frame is None:
             continue
         if len(item["synsets"]) != 1 or not semantics(item["synsets"][0]["id"]):
             continue
-        positions = _subtree(head, tokens, members)
+        positions = _subtree(frame, tokens, members)
         if (
             token["pos"] == "NOUN"
             and len(positions) == 1
@@ -87,7 +120,17 @@ def _front_time(order, tokens, members, root, semantics, edits):
         ):
             continue  # Bare temporal nouns can be objects despite an npadvmod parse.
         if any(
-            tokens[p]["dep"] not in {"npadvmod", "advmod", "amod", "det", "nummod", "compound", "poss", "case"}
+            tokens[p]["dep"]
+            not in {
+                "npadvmod",
+                "advmod",
+                "amod",
+                "det",
+                "nummod",
+                "compound",
+                "poss",
+                "case",
+            }
             or tokens[p]["pos"] in {"VERB", "AUX", "PUNCT"}
             for p in positions
         ):
@@ -106,6 +149,43 @@ def _front_time(order, tokens, members, root, semantics, edits):
             }
         )
     return result
+
+
+def _front_location(order, tokens, members, root, edits):
+    """A narrow event-location frame, not general topicalization/preposition drop."""
+    if tokens[root]["pos"] != "VERB" or not any(
+        tokens[i]["head"] == root and tokens[i]["dep"] in {"obj", "dobj"} for i in members
+    ):
+        return order
+    # Fronting under negation, modality, focus, or questions may change scope.
+    if any(tokens[i]["dep"] in {"neg", "aux", "advmod"} or tokens[i]["word"] == "?" for i in members):
+        return order
+    prepositions = [i for i in members if tokens[i]["dep"] == "prep"]
+    if len(prepositions) != 1:
+        return order
+    [head] = prepositions
+    marker = next((i for i in order if i["start_token"] == i["end_token"] == head), None)
+    if (
+        marker is None
+        or _protected(marker)
+        or tokens[head]["head"] != root
+        or [s["id"] for s in marker["synsets"]] != [EVENT_LOCATION]
+    ):
+        return order
+    positions = _subtree(head, tokens, members)
+    if not any(tokens[i]["dep"] == "pobj" and tokens[i]["pos"] in {"NOUN", "PROPN"} for i in positions):
+        return order
+    if any(
+        tokens[i]["dep"] not in {"prep", "pobj", "det", "amod", "compound", "poss", "case", "nummod"} for i in positions
+    ):
+        return order
+    phrase = _phrase_items(positions, order)
+    if not phrase:
+        return order
+    phrase_ids = {id(i) for i in phrase}
+    edits.append({"rule": "omit-event-location-marker", "source_tokens": [head]})
+    edits.append({"rule": "event-location-frame", "source_tokens": sorted(positions)})
+    return [i for i in phrase if i is not marker] + [i for i in order if id(i) not in phrase_ids]
 
 
 def _subject_first(order, tokens, members, root, edits):
@@ -134,23 +214,76 @@ def _subject_first(order, tokens, members, root, edits):
     return result
 
 
-def gloss_sentence(items, tokens, semantics=None):
-    """Ordered rules: safe omission → temporal frame → simple question ordering.
+def _independent_clauses(items, tokens, root):
+    """Partition only explicit subject-bearing coordination with no shared dependents."""
+    start, end = items[0]["start_token"], items[-1]["end_token"]
+    members = range(start, end + 1)
+    if any(
+        tokens[i]["dep"] in EMBEDDED_CLAUSE_DEPS | {"mark", "preconj"}
+        or (tokens[i]["pos"] == "PUNCT" and tokens[i]["word"] not in {",", ".", "!"})
+        for i in members
+    ):
+        return []  # Embedded clauses, questions, quotations and correlatives need scope analysis.
+    roots = [i for i in members if i == root or tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"}]
+    if (
+        len(roots) < 2
+        or roots[0] != root
+        or any(tokens[r]["pos"] not in {"VERB", "AUX"} or tokens[r]["head"] not in roots for r in roots)
+    ):
+        return []
+    connectors = [
+        i for i in members if tokens[i]["dep"] == "cc" and tokens[i]["pos"] == "CCONJ" and tokens[i]["head"] in roots
+    ]
+    if len(connectors) != len(roots) - 1 or any(
+        not left < connector < right for left, connector, right in zip(roots, connectors, roots[1:])
+    ):
+        return []
+    parts = []
+    for clause_root, first, last in zip(roots, [start] + [i + 1 for i in connectors], connectors + [end + 1]):
+        positions = set(range(first, last))
+        if not any(tokens[i]["dep"] in {"nsubj", "nsubjpass"} and tokens[i]["head"] == clause_root for i in positions):
+            return []
+        if any(
+            i != clause_root and tokens[i]["pos"] != "PUNCT" and tokens[i]["head"] not in positions for i in positions
+        ):
+            return []  # No cross-clause objects, auxiliaries, or temporal modifiers.
+        part = _phrase_items(positions, items)
+        if not part:
+            return []  # Never cut an entity or multiword sense at a boundary.
+        parts.append((part, clause_root))
+    return parts
 
-    Uncertain or multi-clause syntax keeps source order. We never duplicate items,
-    split a WSD span, invent a sense, or drop a negation/modal/content word.
-    """
+
+def gloss_sentence(items, tokens, semantics=None):
+    """Apply rules locally to clear independent clauses; keep sentence/source coordinates."""
+    root = next(i for i in range(items[0]["start_token"], items[-1]["end_token"] + 1) if tokens[i]["dep"] == "ROOT")
+    parts = _independent_clauses(items, tokens, root)
+    if not parts:
+        return _gloss_clause(items, tokens, root, semantics)
+    order, edits, notes = [], [], []
+    for part, clause_root in parts:
+        if order:
+            # Keep the original conjunction between the original clauses.
+            order.append(next(i for i in items if i["start_token"] == part[0]["start_token"] - 1))
+        ordered, changes, warnings = _gloss_clause(part, tokens, clause_root, semantics)
+        order.extend(ordered)
+        edits.extend(changes)
+        notes.extend(code for code in warnings if code not in notes)
+    return order, edits, notes
+
+
+def _gloss_clause(items, tokens, root, semantics):
+    """Safe omission → location/time frames → simple question ordering."""
     members = set(range(items[0]["start_token"], items[-1]["end_token"] + 1))
-    root = next(i for i in members if tokens[i]["dep"] == "ROOT")
     question = any(tokens[i]["word"] == "?" for i in members)
     complex_clause = any(
-        tokens[i]["dep"] in {"ccomp", "xcomp", "advcl", "relcl", "csubj", "csubjpass", "acl", "parataxis"}
-        or (tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"})
+        tokens[i]["dep"] in EMBEDDED_CLAUSE_DEPS
+        or (i != root and tokens[i]["dep"] == "conj" and tokens[i]["pos"] in {"VERB", "AUX"})
         for i in members
     )
     notes = ["complex-clause-order-preserved"] if complex_clause else []
     if semantics is None:
-        notes.append("temporal-semantics-unavailable")
+        notes.append("semantic-rules-unavailable")
     if question:
         notes.append("question-nonmanuals-not-realized")
     edits = []
@@ -159,11 +292,12 @@ def gloss_sentence(items, tokens, semantics=None):
         children.setdefault(tokens[i]["head"], []).append(tokens[i])
     order = []
     for item in items:
-        if _drop(item, tokens, children, root, question):
+        if _drop(item, tokens, children, root, question, items, semantics):
             edits.append({"rule": "omit-function-word", "source_tokens": [item["start_token"]]})
         else:
             order.append(item)
     if not complex_clause:
+        order = _front_location(order, tokens, members, root, edits)
         order = _front_time(order, tokens, members, root, semantics, edits)
         if question:
             order = _subject_first(order, tokens, members, root, edits)

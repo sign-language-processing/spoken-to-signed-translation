@@ -148,8 +148,8 @@ def health(response: Response):
 @app.post("/senses-to-gloss", response_model=GlossResponse, response_model_exclude_unset=True)
 def senses_to_gloss(request: SensesRequest, response: Response):
     try:
-        is_time = partial(semantics.is_time, deadline=monotonic() + 10) if semantics else None
-        result = gloss_senses(request.senses.model_dump(exclude_unset=True), semantics=is_time)
+        matches = partial(semantics.matches, deadline=monotonic() + 10) if semantics else None
+        result = gloss_senses(request.senses.model_dump(exclude_unset=True), semantics=matches)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except WordNetUnavailableError as error:
