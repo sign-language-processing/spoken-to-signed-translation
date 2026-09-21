@@ -7,10 +7,9 @@ aspect and nonmanuals still need a realization stage. See evaluation/asl/README.
 from .rules import _asl_question_length, _omit_asl
 from .types import GlossItem
 
-# Selected Wikidata lexical sense: "indicating a location for an event".
 # Not a surface-word trigger: other meanings of "at" must keep their relation.
-EVENT_LOCATION = "wikidata-en-L3263-S2"
-INFINITIVE_MARKER = "wikidata-en-L2985-S1"
+EVENT_LOCATION = "wikidata-en-L3263-S2"  # At: indicating a location for an event.
+INFINITIVE_MARKER = "wikidata-en-L2985-S1"  # To: infinitive marker, not direction/recipient.
 
 
 def _head(item, tokens):

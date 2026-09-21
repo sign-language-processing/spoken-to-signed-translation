@@ -9,13 +9,27 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import urlopen
 
-# OMW English 1.4: time period, point in time, time unit, time-of-day reading.
-TIME_ROOTS = {"omw-en-15113229-n", "omw-en-15180528-n", "omw-en-15154774-n", "omw-en-15129927-n"}
+# OMW English 1.4 semantic roots; descendants match too.
+TIME_ROOTS = {
+    "omw-en-15113229-n",  # Time period: an amount of time.
+    "omw-en-15180528-n",  # Point in time: an instant.
+    "omw-en-15154774-n",  # Time unit: a unit for measuring time periods.
+    "omw-en-15129927-n",  # Clock time: a time-of-day reading, e.g. 10 o'clock.
+}
 # WordNet adverbs have no hypernym hierarchy. These are exact selected senses,
-# not word triggers: yesterday (literal/recent), tomorrow, today (literal), tonight.
-TIME_ADVERBS = {"omw-en-00507716-r", "omw-en-00507819-r", "omw-en-00479275-r", "omw-en-00207366-r", "omw-en-00079499-r"}
-# Desire, intend (a purpose), attempt: narrow OMW concepts, not a verb list.
-VOLITION_ROOTS = {"omw-en-01825237-v", "omw-en-00708538-v", "omw-en-02530167-v"}
+# not word triggers.
+TIME_ADVERBS = {
+    "omw-en-00507716-r",  # Yesterday: on the preceding day.
+    "omw-en-00507819-r",  # Yesterday: in the recent past (figurative sense).
+    "omw-en-00479275-r",  # Tomorrow: on the following day.
+    "omw-en-00207366-r",  # Today: on this day (literal sense).
+    "omw-en-00079499-r",  # Tonight: during the present day's night.
+}
+VOLITION_ROOTS = {
+    "omw-en-01825237-v",  # Want, desire: feel or have a strong desire for something.
+    "omw-en-00708538-v",  # Intend, mean: have in mind as a purpose.
+    "omw-en-02530167-v",  # Try, attempt, seek: make an effort to do something.
+}
 SEMANTIC_ROOTS = {"time": TIME_ROOTS | TIME_ADVERBS, "volition": VOLITION_ROOTS}
 
 
