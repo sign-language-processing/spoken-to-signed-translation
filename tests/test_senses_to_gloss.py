@@ -106,8 +106,8 @@ def test_service_reorders_complete_candidates_and_handles_empty_or_invalid_sense
         response = send(senses)
         assert response.status_code == 200
         result = response.json()
-        assert result["indexes"] == [[2, 3, 0]]
-        assert [item["word"] for item in result["sentences"][0]] == ["your", "name", "What"]
+        assert result["indexes"] == [[2, 3, 0, 4]]
+        assert [item["word"] for item in result["sentences"][0]] == ["your", "name", "What", "?"]
         assert result["sentences"][0][1]["synsets"] == senses["synsets"]
         assert send({**document([]), "sentences": []}).json() == {
             "sentences": [],

@@ -21,7 +21,7 @@ The stages are explicit functions, not a rule-engine framework:
 3. Apply guarded omissions within each sentence.
 4. Establish guarded location and temporal frames without splitting phrases.
 5. Normalize simple question order and retain source alignment.
-6. Omit standalone punctuation after interpreting it; retain sentence boundaries and question notes.
+6. Retain punctuation as `PUNCT` candidates; realization decides how to render it or mark a pose boundary.
 
 `changes` identifies each applied rule and its original token indexes; `notes`
 reports missing semantic configuration, complex-clause fallback and unrealized
