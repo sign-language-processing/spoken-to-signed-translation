@@ -39,6 +39,53 @@ def test_punctuation_only_sentence_is_preserved():
     assert result["changes"] == []
 
 
+@pytest.mark.parametrize("whitespace", [" ", "\t", "\n\n"])
+def test_whitespace_is_omitted_without_changing_source_or_sentence_coordinates(whitespace):
+    doc = parsed(
+        [
+            ("Heading", "heading", "NOUN", "ROOT", 0),
+            (whitespace, whitespace, "SPACE", "dep", 0),
+            ("We", "we", "PRON", "nsubj", 3),
+            ("work", "work", "VERB", "ROOT", 3),
+            (".", ".", "PUNCT", "punct", 3),
+        ],
+        sentences=[{"start_token": 0, "end_token": 1}, {"start_token": 2, "end_token": 4}],
+    )
+    original = deepcopy(doc)
+    result = senses_to_gloss(doc)
+    assert result["indexes"] == [[0], [2, 3, 4]]
+    assert [[item["word"] for item in sentence] for sentence in result["sentences"]] == [
+        ["Heading"],
+        ["We", "work", "."],
+    ]
+    assert result["changes"] == [{"sentence": 0, "rule": "omit-whitespace", "source_tokens": [1]}]
+    assert result["sentences"][1][0]["sentence"] == 1
+    assert result["sentences"][1][0]["source"]["tokens"] == [doc["tokens"][2]]
+    assert doc == original
+
+
+def test_whitespace_only_sentence_keeps_an_empty_sentence_slot():
+    result = senses_to_gloss(parsed([("\n\n", "\n\n", "SPACE", "ROOT", 0)]))
+    assert result["sentences"] == [[]]
+    assert result["indexes"] == [[]]
+    assert result["changes"] == [{"sentence": 0, "rule": "omit-whitespace", "source_tokens": [0]}]
+
+
+def test_whitespace_inside_atomic_entity_does_not_drop_its_words():
+    doc = parsed(
+        [
+            ("New", "new", "PROPN", "compound", 2),
+            ("\n", "\n", "SPACE", "dep", 2),
+            ("York", "york", "PROPN", "ROOT", 2),
+        ],
+        entities=[{"id": "Q60", "start_token": 0, "end_token": 2}],
+    )
+    result = senses_to_gloss(doc)
+    assert result["indexes"] == [[0]]
+    assert result["sentences"][0][0]["entities"] == doc["entities"]
+    assert result["changes"] == []
+
+
 def test_whole_time_phrase_and_provenance():
     doc = time_document()
     original = deepcopy(doc)
