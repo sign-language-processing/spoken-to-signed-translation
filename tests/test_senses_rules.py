@@ -63,14 +63,15 @@ def test_date_span_cannot_cross_sentence_boundary():
     doc = parsed(
         [
             ("March", "March", "PROPN", "ROOT", 0),
-            ("2026", "2026", "NUM", "ROOT", 1),
+            ("4", "4", "NUM", "nummod", 0),
+            ("2026", "2026", "NUM", "ROOT", 2),
         ],
-        sentences=[{"start_token": 0, "end_token": 0}, {"start_token": 1, "end_token": 1}],
+        sentences=[{"start_token": 0, "end_token": 1}, {"start_token": 2, "end_token": 2}],
     )
-    for token, boundary in zip(doc["tokens"], ["B", "I"]):
+    for token, boundary in zip(doc["tokens"], ["B", "I", "I"]):
         token.update(ent_type="DATE", ent_iob=boundary)
     result = senses_to_gloss(doc)
-    assert [[item["word"] for item in sentence] for sentence in result["sentences"]] == [["March"], ["2026"]]
+    assert [[item["word"] for item in sentence] for sentence in result["sentences"]] == [["March", "4"], ["2026"]]
 
 
 @pytest.mark.parametrize("whitespace", [" ", "\t", "\n\n"])
@@ -139,6 +140,15 @@ def test_semantics_are_required_not_guessed_from_word():
     semantics = Mock()
     semantics.matches.return_value = False
     assert senses_to_gloss(time_document(), semantics=semantics.matches)["indexes"] == [[0, 1, 2, 3, 4]]
+
+
+def test_relative_date_keeps_lexical_senses_and_temporal_reordering():
+    doc = time_document()
+    doc["tokens"][2].update(ent_type="DATE", ent_iob="B")
+    doc["tokens"][3].update(ent_type="DATE", ent_iob="I")
+    result = senses_to_gloss(doc, semantics=lambda _: True)
+    assert result["indexes"] == [[2, 3, 0, 1, 4]]
+    assert result["sentences"][0][1]["synsets"] == doc["synsets"]
 
 
 def test_atomic_time_phrase_moves_without_splitting():

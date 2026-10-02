@@ -147,9 +147,10 @@ Unknown words survive for fingerspelling. Standalone punctuation is retained as
 Overlapping spans prefer the widest meaning (earlier on ties); constituent senses
 are never treated as senses of the whole phrase. No dictionary lookup happens here.
 WSD sentence boundaries are authoritative; malformed trees/spans return 422.
-WSD `DATE` tokens with `ent_iob` B/I boundaries remain one candidate, even without
-a Wikidata link. Source tokens retain their original text and annotations for
-date realization; ambiguous date order is not guessed here.
+Concrete calendar `DATE` spans with WSD `ent_iob` B/I boundaries remain one candidate,
+even without a Wikidata link. Relative phrases retain their lexical senses and
+temporal rules. Source tokens retain their text and annotations for date realization;
+ambiguous date order is not guessed here.
 Without `WORDNET_URL`, temporal ordering is skipped with a note. Configured WordNet
 failures return 503, not a silently different translation. Pin the WordNet deployment
 alongside this service for reproducibility. TODO: batch API and batch semantic lookups.
