@@ -29,6 +29,7 @@ def document(doc, senses):
                 "dep": t.dep_,
                 "head": t.head.i,
                 "ent_type": t.ent_type_,
+                "ent_iob": t.ent_iob_,
             }
             for t in doc
         ],
@@ -80,8 +81,9 @@ def main():
             )
             # Both systems are scored on lexical items, excluding standalone punctuation.
             punctuation = {id(item) for item, t in zip(tokens, data["tokens"]) if t["pos"] == "PUNCT"}
-            output = " | ".join(" ".join(t.word for t in sentence if id(t) not in punctuation)
-                                for sentence in sentences)
+            output = " | ".join(
+                " ".join(t.word for t in sentence if id(t) not in punctuation) for sentence in sentences
+            )
         else:
             if args.glosser_url:
                 body = {"spoken_language": "en", "signed_language": "ase", "senses": data}

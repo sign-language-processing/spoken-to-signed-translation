@@ -1,10 +1,31 @@
 """Prepare atomic gloss candidates from WSD token spans, without dictionary lookup."""
 
 
+def _date_spans(source, sentences):
+    # NER spans are independent of Wikidata links. B/I boundaries distinguish
+    # adjacent dates; labels alone are not enough to group them safely.
+    for start, token in enumerate(source):
+        if token.get("ent_type") == "DATE" and token.get("ent_iob") == "B":
+            end = start
+            while (
+                end + 1 < len(source)
+                and source[end + 1].get("ent_type") == "DATE"
+                and source[end + 1].get("ent_iob") == "I"
+            ):
+                end += 1
+            # NER/sentencizer disagreement should not invalidate the document.
+            if end > start and (
+                sentences is None or any(s["start_token"] <= start <= end <= s["end_token"] for s in sentences)
+            ):
+                yield start, end
+
+
 def prepare_tokens(document: dict) -> list[dict]:
     source = document["tokens"]
     annotations = document["synsets"] + document["entities"]
-    spans = {(item["start_token"], item["end_token"]) for item in annotations}
+    spans = {(item["start_token"], item["end_token"]) for item in annotations} | set(
+        _date_spans(source, document.get("sentences"))
+    )
     for start, end in spans:
         if type(start) is not int or type(end) is not int or not 0 <= start <= end < len(source):
             raise ValueError(f"Invalid WSD token span: {(start, end)}")

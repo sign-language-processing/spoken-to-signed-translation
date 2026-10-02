@@ -39,6 +39,40 @@ def test_punctuation_only_sentence_is_preserved():
     assert result["changes"] == []
 
 
+def test_dates_are_atomic_without_merging_adjacent_entities():
+    doc = parsed(
+        [
+            ("March", "March", "PROPN", "ROOT", 0),
+            ("4", "4", "NUM", "nummod", 0),
+            ("2026", "2026", "NUM", "nummod", 0),
+            ("April", "April", "PROPN", "conj", 0),
+            ("5", "5", "NUM", "nummod", 3),
+            ("2026", "2026", "NUM", "nummod", 3),
+        ]
+    )
+    for token, boundary in zip(doc["tokens"], ["B", "I", "I", "B", "I", "I"]):
+        token.update(ent_type="DATE", ent_iob=boundary)
+    original = deepcopy(doc)
+    result = senses_to_gloss(doc)
+    assert [item["word"] for item in result["sentences"][0]] == ["March 4 2026", "April 5 2026"]
+    assert result["sentences"][0][0]["source"]["tokens"] == doc["tokens"][:3]
+    assert doc == original
+
+
+def test_date_span_cannot_cross_sentence_boundary():
+    doc = parsed(
+        [
+            ("March", "March", "PROPN", "ROOT", 0),
+            ("2026", "2026", "NUM", "ROOT", 1),
+        ],
+        sentences=[{"start_token": 0, "end_token": 0}, {"start_token": 1, "end_token": 1}],
+    )
+    for token, boundary in zip(doc["tokens"], ["B", "I"]):
+        token.update(ent_type="DATE", ent_iob=boundary)
+    result = senses_to_gloss(doc)
+    assert [[item["word"] for item in sentence] for sentence in result["sentences"]] == [["March"], ["2026"]]
+
+
 @pytest.mark.parametrize("whitespace", [" ", "\t", "\n\n"])
 def test_whitespace_is_omitted_without_changing_source_or_sentence_coordinates(whitespace):
     doc = parsed(
