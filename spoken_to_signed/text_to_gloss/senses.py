@@ -119,6 +119,15 @@ def senses_to_gloss(document: dict, *, semantics=None) -> dict:
     for sentence_index, boundary in enumerate(document["sentences"]):
         items = [c for c in candidates if boundary["start_token"] <= c["start_token"] <= boundary["end_token"]]
         ordered, edits, warnings = gloss_sentence(items, document["tokens"], semantics)
+        for item in ordered:
+            if not item["word"].strip():
+                edits.append(
+                    {
+                        "rule": "omit-whitespace",
+                        "source_tokens": list(range(item["start_token"], item["end_token"] + 1)),
+                    }
+                )
+        ordered = [item for item in ordered if item["word"].strip()]
         # Realization decides how punctuation is rendered (or used as a pose boundary).
         for item in ordered:
             item["sentence"] = sentence_index
