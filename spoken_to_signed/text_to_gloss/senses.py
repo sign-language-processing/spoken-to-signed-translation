@@ -13,6 +13,12 @@ def _date_spans(source, sentences):
                 and source[end + 1].get("ent_iob") == "I"
             ):
                 end += 1
+            parts = source[start : end + 1]
+            # Leave relative phrases available to semantic rules and lexical lookup.
+            if sum(t["pos"] == "NUM" for t in parts) < 2 or any(
+                t["pos"] not in {"NUM", "PROPN", "PUNCT", "SYM"} for t in parts
+            ):
+                continue
             # NER/sentencizer disagreement should not invalidate the document.
             if end > start and (
                 sentences is None or any(s["start_token"] <= start <= end <= s["end_token"] for s in sentences)
