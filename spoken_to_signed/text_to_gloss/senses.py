@@ -1,5 +1,8 @@
 """Prepare atomic gloss candidates from WSD token spans, without dictionary lookup."""
 
+from .rewrites import rewrite
+from .rules import degree_aware_lemma
+
 
 def _date_spans(source, sentences):
     # NER spans are independent of Wikidata links. B/I boundaries distinguish
@@ -69,7 +72,8 @@ def prepare_tokens(document: dict) -> list[dict]:
         result.append(
             {
                 "word": " ".join(part["word"] for part in parts),
-                "gloss": expression or " ".join(part["lemma"] for part in parts),
+                "gloss": expression
+                or " ".join(degree_aware_lemma(part["word"], part["lemma"], part.get("morph", {})) for part in parts),
                 "pos": source[head]["pos"],
                 "morphology": [part.get("morph", {}) for part in parts],
                 "start_token": start,
@@ -133,8 +137,10 @@ def senses_to_gloss(document: dict, *, semantics=None) -> dict:
     """WSD document → aligned ASL candidates. No parsing, lookup of signs, or LLM.
 
     ``semantics`` optionally is a callable ``matches(synset_id, category="time")``
-    supporting time and volition. Without it, semantic rules are skipped explicitly.
-    Indexes address prepare_tokens(document),
+    supporting temporal classification. Without it, semantic ordering is skipped.
+    Local sense-directed replacements run after syntactic ordering.
+    Indexes address prepare_tokens(document); expansions repeat an index and
+    contractions use their first source index (rewrite metadata retains all indexes),
     while each candidate and change keeps inclusive original-token coordinates.
     """
     from .asl import gloss_sentence
@@ -155,6 +161,8 @@ def senses_to_gloss(document: dict, *, semantics=None) -> dict:
                     }
                 )
         ordered = [item for item in ordered if item["word"].strip()]
+        ordered, replacements = rewrite(ordered, positions, document)
+        edits.extend(replacements)
         # Realization decides how punctuation is rendered (or used as a pose boundary).
         for item in ordered:
             item["sentence"] = sentence_index
@@ -164,7 +172,10 @@ def senses_to_gloss(document: dict, *, semantics=None) -> dict:
         notes.extend({"sentence": sentence_index, "code": code} for code in warnings)
     return {
         "sentences": sentences,
-        "indexes": [[positions[id(c)] for c in s] for s in sentences],
+        "indexes": [
+            [positions[id(c)] if "rewrite" not in c else c["rewrite"]["source_candidate_indexes"][0] for c in s]
+            for s in sentences
+        ],
         "changes": changes,
         "notes": notes,
     }

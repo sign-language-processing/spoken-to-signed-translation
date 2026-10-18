@@ -10,6 +10,7 @@ from .types import GlossItem
 # Not a surface-word trigger: other meanings of "at" must keep their relation.
 EVENT_LOCATION = "wikidata-en-L3263-S2"  # At: indicating a location for an event.
 INFINITIVE_MARKER = "wikidata-en-L2985-S1"  # To: infinitive marker, not direction/recipient.
+COPULA = "omw-en-02604760-v"  # Have the quality of being, not existence or passive/progressive BE.
 EMBEDDED_CLAUSE_DEPS = {"ccomp", "xcomp", "advcl", "relcl", "csubj", "csubjpass", "acl", "parataxis"}
 
 
@@ -34,30 +35,38 @@ def _protected(item):
     )
 
 
-def _drop(item, tokens, children, root, question, items, semantics):
+def _drop(item, tokens, children, root, question):
     # A multiword meaning or named entity is indivisible, even if it contains "the".
     if item["start_token"] != item["end_token"] or _protected(item):
         return False
     index = item["start_token"]
     token = tokens[index]
-    if token["pos"] == "PART" and token["dep"] == "aux":
+    if token["lemma"] == "to" and token["pos"] == "PART" and token["dep"] == "aux":
         verb = tokens[token["head"]]
-        governor = next((i for i in items if i["start_token"] == i["end_token"] == verb["head"]), None)
-        # Both grammatical function and governor meaning must be known. Do not
-        # erase unresolved modality/aspect or inspect inside an atomic meaning.
+        governor = tokens[verb["head"]]
+        # HAVE TO expresses obligation; keep it intact until it can become MUST.
+        if verb["dep"] == "xcomp" and governor["lemma"] == "have":
+            return False
         return bool(
-            semantics
-            and [s["id"] for s in item["synsets"]] == [INFINITIVE_MARKER]
-            and verb["pos"] == "VERB"
-            and verb["dep"] == "xcomp"
-            and governor
-            and not _protected(governor)
-            and len(governor["synsets"]) == 1
-            and semantics(governor["synsets"][0]["id"], "volition")
+            verb["pos"] in {"VERB", "AUX"}
+            and (
+                verb.get("morph", {}).get("VerbForm") == "Inf"
+                or [s["id"] for s in item["synsets"]] == [INFINITIVE_MARKER]
+            )
         )
+    if token["lemma"] == "have" and token["pos"] == "AUX" and token["dep"] == "aux":
+        # Syntax distinguishes perfect HAVE from possession, obligation and causatives,
+        # even when WSD mistakenly selects a possession sense for the auxiliary.
+        return tokens[token["head"]].get("morph", {}).get("VerbForm") == "Part"
     if token["lemma"] == "be":
         # Preserve existential, passive, progressive and elliptical constructions.
-        if index != root or any(t["dep"] == "expl" for t in children.get(index, [])):
+        if index != root and not (
+            token["dep"] in {"ccomp", "advcl"}
+            and [s["id"] for s in item["synsets"]] == [COPULA]
+            and any(t["dep"] == "nsubj" for t in children.get(index, []))
+        ):
+            return False
+        if any(t["dep"] == "expl" for t in children.get(index, [])):
             return False
         if not any(t["dep"] in {"attr", "acomp", "prep", "advmod"} for t in children.get(index, [])):
             return False
@@ -214,6 +223,47 @@ def _subject_first(order, tokens, members, root, edits):
     return result
 
 
+def _front_condition(order, tokens, members, root, edits):
+    """Move a whole trailing conditional; embedded IF questions keep their scope."""
+    markers = [
+        item
+        for item in order
+        if [s["id"] for s in item["synsets"]] == ["wikidata-en-L3003-S1"] and item["start_token"] == item["end_token"]
+    ]
+    if len(markers) != 1:
+        return order
+    marker = markers[0]
+    index = marker["start_token"]
+    condition = tokens[index]["head"]
+    if (
+        _protected(marker)
+        or tokens[index]["dep"] != "mark"
+        or tokens[index]["pos"] != "SCONJ"
+        or tokens[condition]["dep"] != "advcl"
+        or tokens[condition]["head"] != root
+        or index < root
+        or tokens[condition]["pos"] not in {"VERB", "AUX"}
+        or not any(tokens[i]["head"] == condition and tokens[i]["dep"] == "nsubj" for i in members)
+        or any(
+            tokens[i]["dep"] in EMBEDDED_CLAUSE_DEPS
+            and i != condition
+            or tokens[i]["dep"] == "conj"
+            and tokens[i]["pos"] in {"VERB", "AUX"}
+            or tokens[i]["pos"] == "PUNCT"
+            and tokens[i]["word"] not in {".", "!"}
+            for i in members
+        )
+    ):
+        return order
+    positions = _subtree(condition, tokens, members)
+    phrase = _phrase_items(positions, order)
+    if not phrase or min(positions) != index or any(tokens[i]["pos"] == "PUNCT" for i in positions):
+        return order
+    phrase_ids = {id(i) for i in phrase}
+    edits.append({"rule": "conditional-frame-first", "source_tokens": sorted(positions)})
+    return phrase + [i for i in order if id(i) not in phrase_ids]
+
+
 def _independent_clauses(items, tokens, root):
     """Partition only explicit subject-bearing coordination with no shared dependents."""
     start, end = items[0]["start_token"], items[-1]["end_token"]
@@ -259,7 +309,13 @@ def gloss_sentence(items, tokens, semantics=None):
     root = next(i for i in range(items[0]["start_token"], items[-1]["end_token"] + 1) if tokens[i]["dep"] == "ROOT")
     parts = _independent_clauses(items, tokens, root)
     if not parts:
-        return _gloss_clause(items, tokens, root, semantics)
+        order, edits, notes = _gloss_clause(items, tokens, root, semantics)
+        members = range(items[0]["start_token"], items[-1]["end_token"] + 1)
+        ordered = _front_condition(order, tokens, members, root, edits)
+        if ordered != order:
+            notes = [note for note in notes if note != "complex-clause-order-preserved"]
+            notes.append("conditional-nonmanuals-not-realized")
+        return ordered, edits, notes
     order, edits, notes = [], [], []
     for part, clause_root in parts:
         if order:
@@ -292,10 +348,11 @@ def _gloss_clause(items, tokens, root, semantics):
         children.setdefault(tokens[i]["head"], []).append(tokens[i])
     order = []
     for item in items:
-        if _drop(item, tokens, children, root, question, items, semantics):
+        if _drop(item, tokens, children, root, question):
             edits.append({"rule": "omit-function-word", "source_tokens": [item["start_token"]]})
         else:
             order.append(item)
+    notes.extend("perfect-aspect-not-realized" for edit in edits if tokens[edit["source_tokens"][0]]["lemma"] == "have")
     if not complex_clause:
         order = _front_location(order, tokens, members, root, edits)
         order = _front_time(order, tokens, members, root, semantics, edits)

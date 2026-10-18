@@ -449,6 +449,11 @@ def text_to_gloss_given_spacy_model(text: str, spacy_model, lang: str = "de", pu
     }
 
 
+def degree_aware_lemma(word, lemma, morphology):
+    """Keep lexical degree (best/better/happier) instead of flattening it away."""
+    return word.casefold() if morphology.get("Degree") in {"Cmp", "Sup"} else lemma
+
+
 def _omit_asl(item, metadata, following=None, question=False):
     word = (item.word or "").casefold()
     pos = metadata.get("pos")
@@ -552,7 +557,9 @@ def text_to_gloss(text: str, language: str, punctuation=False, signed_language=N
             raise ValueError("English rules support only en → ase")
         model = load_spacy_model(("en_core_web_lg", "en_core_web_md", "en_core_web_sm"))
         doc = model(text)
-        tokens = [GlossItem(token.text, token.lemma_) for token in doc]
+        tokens = [
+            GlossItem(token.text, degree_aware_lemma(token.text, token.lemma_, token.morph.to_dict())) for token in doc
+        ]
         metadata = [{"pos": token.pos_, "morphology": [token.morph.to_dict()]} for token in doc]
         sentences = tokens_to_gloss(tokens, language="en", signed_language="ase", metadata=metadata)
         if not punctuation:

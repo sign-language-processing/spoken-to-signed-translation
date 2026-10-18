@@ -75,6 +75,7 @@ def test_retired_endpoint(client):
 def test_infinitive_semantics_through_http(client, monkeypatch):
     from spoken_to_signed.text_to_gloss.wordnet import WordNet, WordNetUnavailableError
     from tests.test_asl_phrases import infinitive
+    from tests.test_senses_rules import time_document
 
     semantics = WordNet("http://wordnet")
     monkeypatch.setattr(server, "semantics", semantics)
@@ -86,7 +87,9 @@ def test_infinitive_semantics_through_http(client, monkeypatch):
         raise WordNetUnavailableError("offline")
 
     monkeypatch.setattr(semantics, "matches", unavailable)
-    assert client.post("/senses-to-gloss", json=senses_request(senses=infinitive())).status_code == 503
+    # Infinitive omission needs no remote ancestry lookup; temporal rules still do.
+    assert client.post("/senses-to-gloss", json=senses_request(senses=infinitive())).status_code == 200
+    assert client.post("/senses-to-gloss", json=senses_request(senses=time_document())).status_code == 503
 
 
 def test_coordinated_clauses_keep_one_sentence_through_http(client, monkeypatch):
@@ -191,3 +194,16 @@ def test_sentence_metadata_survives_flattening(client):
     result = client.post("/senses-to-gloss", json=senses_request()).json()
     assert result["sentences"][0][0]["sentence"] == 0
     assert result["sentences"][0][0]["notes"] == ["semantic-rules-unavailable"]
+
+
+def test_rewritten_senses_and_expansion_survive_http_serialization(client):
+    from tests.test_sense_rewrites import meaning
+
+    response = client.post("/senses-to-gloss", json=senses_request(senses=meaning("unable", "omw-en-00002098-a")))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["indexes"] == [[0, 0]]
+    assert [i["gloss"] for i in body["sentences"][0]] == ["NOT", "CAN"]
+    assert body["sentences"][0][1]["synsets"][0]["id"] == "wikidata-en-L1888-S1"
+    assert body["sentences"][0][1]["rewrite"]["source_candidate_indexes"] == [0]
+    assert body["sentences"][0][1]["source"]["synsets"][0]["id"] == "omw-en-00002098-a"

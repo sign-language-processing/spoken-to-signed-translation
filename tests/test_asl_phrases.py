@@ -6,7 +6,6 @@ from unittest.mock import Mock
 import pytest
 
 from spoken_to_signed.text_to_gloss.senses import senses_to_gloss
-from spoken_to_signed.text_to_gloss.wordnet import WordNet
 from tests.test_senses_rules import parsed
 
 
@@ -24,49 +23,39 @@ def infinitive(governor="want", sense="omw-en-01825237-v"):
                 {"id": "wikidata-en-L2985-S1", "start_token": 2, "end_token": 2}])
 
 
-@pytest.mark.parametrize("governor", ["want", "wish", "desire", "unseen-word"])
-def test_infinitival_complement_uses_meaning_not_spelling(governor):
+@pytest.mark.parametrize("governor", ["want", "wish", "desire", "use", "remember", "unseen-word"])
+def test_infinitive_marker_does_not_require_a_volitional_governor(governor):
     doc = infinitive(governor)
     original = deepcopy(doc)
-    semantics = Mock(return_value=True)
+    semantics = Mock(side_effect=AssertionError("No semantic ancestry lookup needed"))
     assert words(doc, semantics) == ["I", governor, "sleep"]
-    semantics.assert_called_once_with("omw-en-01825237-v", "volition")
+    assert words(doc) == ["I", governor, "sleep"]
+    semantics.assert_not_called()
     assert doc == original
 
 
-@pytest.mark.parametrize("governor", ["have", "use", "remember"])
-def test_unresolved_modality_aspect_and_retrospective_complements(governor):
-    assert words(infinitive(governor)) == ["I", governor, "to", "sleep"]
+def test_obligation_have_to_is_not_reduced_to_possessive_have():
+    assert words(infinitive("have")) == ["I", "have", "to", "sleep"]
 
 
-@pytest.mark.parametrize("protection", [
-    "missing", "ambiguous", "non-volitional", "marker-sense", "atomic-governor", "entity-governor",
-])
-def test_infinitive_requires_selected_marker_and_governor_senses(protection):
+@pytest.mark.parametrize("protection", ["missing", "ambiguous", "marker-sense"])
+def test_infinitive_requires_the_selected_infinitive_marker(protection):
     doc = infinitive()
-    semantics = Mock(return_value=True)
     if protection == "missing":
-        doc["synsets"].pop(0)
+        doc["synsets"].pop(1)
     elif protection == "ambiguous":
-        doc["synsets"].append({**doc["synsets"][0], "id": "other"})
-    elif protection == "non-volitional":
-        semantics.return_value = False
-    elif protection == "marker-sense":
-        doc["synsets"][1]["id"] = "directional-to"
-    elif protection == "entity-governor":
-        doc["entities"] = [{"id": "Q1", "start_token": 1, "end_token": 1}]
+        doc["synsets"].append({**doc["synsets"][1], "id": "other"})
     else:
-        doc["synsets"][0]["start_token"] = 0
-    assert "to" in words(doc, semantics)
-    if protection != "non-volitional":
-        semantics.assert_not_called()
+        doc["synsets"][1]["id"] = "directional-to"
+    assert "to" in words(doc)
 
 
-def test_same_lemma_different_selected_sense(monkeypatch):
-    semantics = WordNet("http://wordnet")
-    monkeypatch.setattr(semantics, "parents", lambda _: ())
-    assert words(infinitive("want", "omw-en-01825237-v"), semantics.matches) == ["I", "want", "sleep"]
-    assert words(infinitive("want", "omw-en-02632567-v"), semantics.matches) == ["I", "want", "to", "sleep"]
+@pytest.mark.parametrize("senses", [[], [{"id": "directional-to", "start_token": 2, "end_token": 2}]])
+def test_clear_infinitival_syntax_overrides_missing_or_incorrect_marker_sense(senses):
+    doc = infinitive()
+    doc["synsets"] = senses
+    doc["tokens"][3]["morph"] = {"VerbForm": "Inf"}
+    assert words(doc) == ["I", "want", "sleep"]
 
 
 @pytest.mark.parametrize("protection", ["entity", "meaning", "preposition", "ellipsis"])
