@@ -107,7 +107,8 @@ class SensesRequest(BaseModel):
 
 class GlossResponse(BaseModel):
     sentences: list[list[Token]]
-    # Positions in prepare_tokens(senses), not in the raw WSD token list.
+    # Positions in prepare_tokens(senses), not raw WSD tokens. Expansions repeat
+    # indexes; contractions use their first index. rewrite retains every origin.
     indexes: list[list[int]]
     changes: list[dict]
     notes: list[dict]

@@ -1,0 +1,237 @@
+[
+  {
+    "id": "have-to-obligation",
+    "sources": [{"lemma": "have", "sense_id": "*"}, {"sense_id": "wikidata-en-L2985-S1"}],
+    "guard": "affirmative-obligation",
+    "targets": [
+      {"form": "MUST", "sense_id": "wikidata-en-L1892-S1", "definition": "to be obligated", "pos": "AUX"}
+    ]
+  },
+  {
+    "id": "postpone",
+    "sources": [{"sense_id": "omw-en-02642814-v"}],
+    "targets": [
+      {"form": "POSTPONE", "sense_id": "omw-en-02642814-v", "definition": "hold back to a later time", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "search",
+    "sources": [{"sense_id": "omw-en-01315613-v"}],
+    "targets": [
+      {"form": "SEARCH", "sense_id": "omw-en-01315613-v", "definition": "try to locate or discover, or try to establish the existence of", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "stop-activity",
+    "sources": [{"sense_id": "omw-en-02680814-v"}],
+    "targets": [
+      {"form": "STOP", "sense_id": "omw-en-02680814-v", "definition": "put an end to a state or an activity", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "discourse-incidentally",
+    "sources": [{"sense_id": "omw-en-00156222-r"}],
+    "targets": [
+      {"form": "INCIDENTALLY", "sense_id": "omw-en-00156222-r", "definition": "introducing a different topic; in point of fact", "pos": "ADV"}
+    ]
+  },
+  {
+    "id": "immediately",
+    "sources": [{"sense_id": "omw-en-00048739-r"}],
+    "targets": [
+      {"form": "IMMEDIATELY", "sense_id": "omw-en-00048739-r", "definition": "without delay or hesitation; with no time intervening", "pos": "ADV"}
+    ]
+  },
+  {
+    "id": "certainty",
+    "sources": [{"sense_id": "omw-en-00144722-r"}],
+    "targets": [
+      {"form": "CERTAINLY", "sense_id": "omw-en-00144722-r", "definition": "definitely or positively (`sure' is sometimes used informally for `surely')", "pos": "ADV"}
+    ]
+  },
+  {
+    "id": "in-fact",
+    "sources": [{"sense_id": "omw-en-00148869-r"}],
+    "targets": [
+      {"form": "IN-FACT", "sense_id": "omw-en-00148869-r", "definition": "in reality or actuality", "pos": "ADV"}
+    ]
+  },
+  {
+    "id": "contact-communication",
+    "sources": [{"sense_id": "omw-en-00743344-v"}],
+    "targets": [
+      {"form": "CONTACT", "sense_id": "omw-en-00743344-v", "definition": "be in or establish communication with", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "ability-can",
+    "sources": [{"sense_id": "wikidata-en-L1379915-S1"}],
+    "targets": [
+      {"form": "CAN", "sense_id": "wikidata-en-L1888-S1", "definition": "able to do something", "pos": "AUX"}
+    ]
+  },
+  {
+    "id": "unable-not-can",
+    "sources": [{"sense_id": "omw-en-00002098-a"}],
+    "guard": "predicate-negation",
+    "targets": [
+      {"form": "NOT", "sense_id": "omw-en-00024073-r", "definition": "negation of a word or group of words", "pos": "PART"},
+      {"form": "CAN", "sense_id": "wikidata-en-L1888-S1", "definition": "able to do something", "pos": "AUX"}
+    ]
+  },
+  {
+    "id": "no-longer",
+    "sources": [{"sense_id": "omw-en-00031515-r"}],
+    "targets": [
+      {"form": "NOT", "sense_id": "omw-en-00024073-r", "definition": "negation of a word or group of words", "pos": "PART"},
+      {"form": "ANYMORE", "sense_id": "omw-en-00031606-r", "definition": "at the present or from now on; usually used with a negative", "pos": "ADV"}
+    ]
+  },
+  {
+    "id": "become-state",
+    "sources": [{"sense_id": "omw-en-00149583-v"}],
+    "targets": [
+      {"form": "BECOME", "sense_id": "omw-en-00149583-v", "definition": "enter or assume a certain state or condition", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "degree-intensifier",
+    "sources": [{"sense_id": "omw-en-00031899-r"}],
+    "guard": "degree-modifier",
+    "targets": [
+      {"form": "VERY", "sense_id": "omw-en-00031899-r", "definition": "used as intensifiers; `real' is sometimes used informally for `really'; `rattling' is informal", "pos": "ADV"}
+    ]
+  },
+  {
+    "id": "omit-object-clause-that",
+    "sources": [{"sense_id": "wikidata-en-L2988-S1"}],
+    "guard": "object-clause-marker",
+    "targets": [
+    ]
+  },
+  {
+    "id": "allow-permission",
+    "sources": [{"sense_id": "omw-en-00802318-v"}],
+    "targets": [
+      {"form": "ALLOW", "sense_id": "omw-en-00802318-v", "definition": "consent to, give permission", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "sit-take-seat",
+    "sources": [{"sense_id": "omw-en-01984902-v"}],
+    "targets": [
+      {"form": "SIT", "sense_id": "omw-en-01984902-v", "definition": "take a seat", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "present-existential",
+    "sources": [{"sense_id": "wikidata-en-L2998-S1"}, {"lemma": "be", "sense_id": "*"}],
+    "guard": "present-existential",
+    "targets": [
+      {"form": "EXIST", "sense_id": "omw-en-02603699-v", "definition": "have an existence, be extant", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "insufficient-not-enough",
+    "sources": [{"sense_id": "omw-en-02336449-a"}],
+    "guard": "predicate-negation",
+    "targets": [
+      {"form": "NOT", "sense_id": "omw-en-00024073-r", "definition": "negation of a word or group of words", "pos": "PART"},
+      {"form": "ENOUGH", "sense_id": "omw-en-02336109-s", "definition": "sufficient for the purpose", "pos": "ADJ"}
+    ]
+  },
+  {
+    "id": "determine-information",
+    "sources": [{"sense_id": "omw-en-00918872-v"}],
+    "targets": [
+      {"form": "DETERMINE", "sense_id": "omw-en-00918872-v", "definition": "establish after a calculation, investigation, experiment, survey, or study", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "reject-offer",
+    "sources": [{"sense_id": "omw-en-02237338-v"}],
+    "targets": [
+      {"form": "REJECT", "sense_id": "omw-en-02237338-v", "definition": "refuse to accept", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "cancel-event",
+    "sources": [{"sense_id": "omw-en-02477755-v"}],
+    "targets": [
+      {"form": "CANCEL", "sense_id": "omw-en-02477755-v", "definition": "postpone indefinitely or annul something that was scheduled", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "invent-fabrication",
+    "sources": [{"sense_id": "omw-en-01634424-v"}],
+    "targets": [
+      {"form": "INVENT", "sense_id": "omw-en-01634424-v", "definition": "make up something artificial or untrue", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "solve-problem",
+    "sources": [{"sense_id": "omw-en-00634906-v"}],
+    "targets": [
+      {"form": "SOLVE", "sense_id": "omw-en-00634906-v", "definition": "find the solution to (a problem or question) or understand the meaning of", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "event-happen",
+    "sources": [{"sense_id": "omw-en-00339934-v"}],
+    "targets": [
+      {"form": "HAPPEN", "sense_id": "omw-en-00339934-v", "definition": "come to pass", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "tolerate-put-up-with",
+    "sources": [{"sense_id": "omw-en-00668099-v"}, {"lemma": "with", "sense_id": "*"}],
+    "guard": "tolerate-complement",
+    "targets": [
+      {"form": "TOLERATE", "sense_id": "omw-en-00668099-v", "definition": "put up with something or somebody unpleasant", "pos": "VERB"}
+    ]
+  },
+  {
+    "id": "additive-also",
+    "sources": [{"sense_id": "omw-en-00047534-r"}],
+    "guard": "additive-marker",
+    "targets": [
+      {"form": "ALSO", "sense_id": "omw-en-00047534-r", "definition": "in addition", "pos": "ADV"}
+    ]
+  },
+  {
+    "id": "unavailable-not-available",
+    "sources": [{"sense_id": "omw-en-00185921-a"}],
+    "guard": "predicate-negation",
+    "targets": [
+      {"form": "NOT", "sense_id": "omw-en-00024073-r", "definition": "negation of a word or group of words", "pos": "PART"},
+      {"form": "AVAILABLE", "sense_id": "omw-en-00183053-a", "definition": "obtainable or accessible and ready for use or service", "pos": "ADJ"}
+    ]
+  },
+  {
+    "id": "impossible-not-possible",
+    "sources": [{"sense_id": "omw-en-01823092-a"}],
+    "guard": "predicate-negation",
+    "targets": [
+      {"form": "NOT", "sense_id": "omw-en-00024073-r", "definition": "negation of a word or group of words", "pos": "PART"},
+      {"form": "POSSIBLE", "sense_id": "omw-en-01821266-a", "definition": "capable of happening or existing", "pos": "ADJ"}
+    ]
+  },
+  {
+    "id": "unnecessary-not-necessary",
+    "sources": [{"sense_id": "omw-en-01581115-a"}],
+    "guard": "predicate-negation",
+    "targets": [
+      {"form": "NOT", "sense_id": "omw-en-00024073-r", "definition": "negation of a word or group of words", "pos": "PART"},
+      {"form": "NECESSARY", "sense_id": "omw-en-01580050-a", "definition": "absolutely essential", "pos": "ADJ"}
+    ]
+  },
+  {
+    "id": "unaware-not-aware",
+    "sources": [{"sense_id": "omw-en-00191603-a"}],
+    "guard": "predicate-negation",
+    "targets": [
+      {"form": "NOT", "sense_id": "omw-en-00024073-r", "definition": "negation of a word or group of words", "pos": "PART"},
+      {"form": "AWARE", "sense_id": "omw-en-00190115-a", "definition": "(sometimes followed by `of') having or showing knowledge or understanding or realization or perception", "pos": "ADJ"}
+    ]
+  }
+]
