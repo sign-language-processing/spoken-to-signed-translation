@@ -7,8 +7,11 @@ from .lookup import CoverageType, PoseResult
 
 
 class FingerspellingPoseLookup(CSVPoseLookup):
-    def __init__(self):
-        fs_directory = Path(__file__).parent.parent.parent / "assets" / "fingerspelling_lexicon"
+    def __init__(self, directory: str | None = None):
+        # Allow callers to point this lookup at an alternative fingerspelling
+        # lexicon directory (e.g. a monolingual A-Z lexicon); falls back to the
+        # bundled assets directory when not given.
+        fs_directory = directory or Path(__file__).parent.parent.parent / "assets" / "fingerspelling_lexicon"
 
         super().__init__(directory=str(fs_directory))
 

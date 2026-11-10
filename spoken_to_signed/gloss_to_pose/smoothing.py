@@ -14,7 +14,13 @@ def smooth_non_face(pose: Pose, filter_trajectory) -> Pose:
     # facial expressions that carry meaning, and it has no seam jitter to fix. Its
     # landmarks form one contiguous block, so we filter the keypoints on either
     # side of it in two vectorized calls instead of looping over every point.
-    [face_component] = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
+    face = [c for c in pose.header.components if c.name == "FACE_LANDMARKS"]
+    if not face:
+        # Poses without a face component: filter every keypoint in one call.
+        data = pose.body.data
+        data[:, 0] = filter_trajectory(data[:, 0], axis=0)
+        return pose
+    face_component = face[0]
     face_start = pose.header.get_point_index("FACE_LANDMARKS", face_component.points[0])
     face_end = pose.header.get_point_index("FACE_LANDMARKS", face_component.points[-1])
 
