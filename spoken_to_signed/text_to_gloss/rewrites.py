@@ -90,9 +90,9 @@ def _obligation(items, tokens):
 def _matches(rule, items, tokens):
     if len(items) != len(rule["sources"]):
         return False
-    if any(left["end_token"] + 1 != right["start_token"] for left, right in zip(items, items[1:])):
+    if any(left["end_token"] + 1 != right["start_token"] for left, right in zip(items, items[1:], strict=False)):
         return False  # Do not consume across an omission, reordered phrase or punctuation.
-    for item, source in zip(items, rule["sources"]):
+    for item, source in zip(items, rule["sources"], strict=False):
         if item["entities"] or any(t.get("ent_type") for t in item["source"]["tokens"]):
             return False
         # An atomic idiom owns its internal grammar: NO LONGER is temporal,

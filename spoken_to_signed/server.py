@@ -6,7 +6,7 @@ from functools import partial
 from hashlib import sha256
 from io import BytesIO
 from time import monotonic
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
@@ -60,9 +60,9 @@ class Token(BaseModel):
     # Carry caller annotations through glossing and on to downstream lookup.
     model_config = ConfigDict(extra="allow")
 
-    word: Optional[str] = None
+    word: str | None = None
     gloss: str
-    pos: Optional[str] = None
+    pos: str | None = None
     morphology: list[dict[str, str]] = Field(default_factory=list)
 
 
@@ -83,7 +83,7 @@ class Span(BaseModel):
 
 
 class SenseSpan(Span):
-    id: Union[str, int]
+    id: str | int
 
 
 class SynsetSpan(Span):
@@ -120,12 +120,12 @@ class PoseRequest(BaseModel):
     tokens: list[Token] = Field(min_length=1, max_length=1024)
     spoken_language: str
     signed_language: str
-    source: Optional[str] = None
+    source: str | None = None
     fingerspelling: bool = True
     anonymize: bool = False
 
 
-def pose_lookup(fingerspelling: bool, source: Optional[str]):
+def pose_lookup(fingerspelling: bool, source: str | None):
     from spoken_to_signed.gloss_to_pose.lookup import CSVPoseLookup
     from spoken_to_signed.gloss_to_pose.lookup.fingerspelling_lookup import FingerspellingPoseLookup
     from spoken_to_signed.gloss_to_pose.lookup.sql_lookup import SQLPoseLookup

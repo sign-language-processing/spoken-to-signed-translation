@@ -3,8 +3,8 @@ import os
 import re
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
-from typing import NamedTuple, Optional
+from enum import StrEnum
+from typing import NamedTuple
 
 from pose_format import Pose
 
@@ -13,7 +13,7 @@ from spoken_to_signed.gloss_to_pose.lookup.lru_cache import LRUCache
 from spoken_to_signed.text_to_gloss.types import Gloss
 
 
-class CoverageType(str, Enum):
+class CoverageType(StrEnum):
     # str subclass so values serialize to JSON as-is
     LEXICON = "lexicon"
     LANGUAGE_BACKUP = "language_backup"
@@ -31,10 +31,10 @@ class PoseResult(NamedTuple):
     pose: Pose
     # Active-signing frame range within the pose, if known (e.g. from a precomputed
     # segmentation). None means "unknown -- fall back to the elbow heuristic".
-    signing_span: Optional[tuple[int, int]] = None
+    signing_span: tuple[int, int] | None = None
     # How the lookup resolved; None for results that did not come from a lookup
     # (e.g. concatenated poses).
-    coverage: Optional[CoverageType] = None
+    coverage: CoverageType | None = None
 
 
 # A standalone integer optionally wrapped in punctuation (e.g. "500."), but not
@@ -196,7 +196,7 @@ class PoseLookup:
         # Record how each token resolved, for optional coverage reporting
         self.last_coverage = [
             TokenCoverage(word, gloss, result.coverage if result is not None else CoverageType.UNMATCHED)
-            for (word, gloss), result in zip(glosses, all_results)
+            for (word, gloss), result in zip(glosses, all_results, strict=False)
             if word != ""
         ]
 

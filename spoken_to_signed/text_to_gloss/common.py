@@ -1,9 +1,8 @@
 import functools
-from typing import Optional
 
 
 @functools.cache
-def load_spacy_model(model_names: tuple[str, ...], disable: Optional[tuple[str, ...]] = None):
+def load_spacy_model(model_names: tuple[str, ...], disable: tuple[str, ...] | None = None):
     try:
         import spacy
     except ImportError as e:

@@ -13,7 +13,7 @@ def gloss_to_pose(
     spoken_language: str,
     signed_language: str,
     source: str = None,
-    anonymize: Union[bool, Pose] = False,
+    anonymize: bool | Pose = False,
 ) -> PoseResult:
     results = pose_lookup.lookup_sequence(glosses, spoken_language, signed_language, source)
     poses = [r.pose for r in results]

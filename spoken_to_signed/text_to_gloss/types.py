@@ -1,8 +1,8 @@
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 
 class GlossItem(NamedTuple):
-    word: Optional[str]
+    word: str | None
     gloss: str
 
 
