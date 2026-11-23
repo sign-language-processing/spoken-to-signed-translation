@@ -1,9 +1,10 @@
-FROM python:3.12-slim
+FROM python:3.15.2-slim-trixie
 
 WORKDIR /app
+COPY requirements.lock /opt/requirements.lock
 COPY pyproject.toml README.md ./
 COPY spoken_to_signed ./spoken_to_signed
-RUN pip install --no-cache-dir '.[server,postgres,gcs]' \
+RUN pip install --no-cache-dir -r /opt/requirements.lock && pip install --no-deps '.[server,postgres,gcs]' \
     && useradd --create-home --uid 1000 app
 
 USER app

@@ -23,10 +23,10 @@ dev = [
     "openai",
     "python-dotenv",
     "spoken-to-signed[server]",
-    "httpx",
+    "httpx>=0.28.1",
     "spoken-to-signed[postgres]",
 ]
-server = ["fastapi", "pydantic>=2", "hypercorn"]
+server = ["fastapi>=0.165.0", "pydantic>=2.14.4", "hypercorn>=0.18.0"]
 postgres = ["psycopg2-binary"]
 gpt = ["openai", "python-dotenv"]
 lexicon = [

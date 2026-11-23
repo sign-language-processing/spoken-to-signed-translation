@@ -5,3 +5,5 @@
 !spoken_to_signed/**
 **/__pycache__
 **/*_test.py
+
+!requirements.lock
