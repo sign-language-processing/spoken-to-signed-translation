@@ -26,7 +26,7 @@ jobs:
         run: uv pip install ".[dev]"
 
       - name: Lint code
-        run: uv run ruff check spoken_to_signed
+        run: ruff check spoken_to_signed
 
       - name: Check formatting
-        run: uv run ruff format --check spoken_to_signed
+        run: ruff format --check spoken_to_signed
