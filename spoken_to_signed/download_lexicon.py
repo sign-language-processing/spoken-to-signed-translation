@@ -3,7 +3,6 @@ import csv
 import os
 import time
 from datetime import datetime
-from typing import Optional
 
 from pose_format import Pose, PoseHeader
 from pose_format.numpy import NumPyPoseBody
@@ -56,7 +55,7 @@ def _segment_loader():
     return ModelStore(model_dir=model_dir, device="cpu")
 
 
-def _segment_span_ms(pose: Pose, loader) -> Optional[tuple[int, int]]:
+def _segment_span_ms(pose: Pose, loader) -> tuple[int, int] | None:
     """The [start, end] of the active signing in milliseconds from the segmentation
     model, or None if unavailable / no sign detected."""
     if loader is None:

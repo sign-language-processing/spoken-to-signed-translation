@@ -285,11 +285,13 @@ def _independent_clauses(items, tokens, root):
         i for i in members if tokens[i]["dep"] == "cc" and tokens[i]["pos"] == "CCONJ" and tokens[i]["head"] in roots
     ]
     if len(connectors) != len(roots) - 1 or any(
-        not left < connector < right for left, connector, right in zip(roots, connectors, roots[1:])
+        not left < connector < right for left, connector, right in zip(roots, connectors, roots[1:], strict=False)
     ):
         return []
     parts = []
-    for clause_root, first, last in zip(roots, [start] + [i + 1 for i in connectors], connectors + [end + 1]):
+    for clause_root, first, last in zip(
+        roots, [start] + [i + 1 for i in connectors], connectors + [end + 1], strict=False
+    ):
         positions = set(range(first, last))
         if not any(tokens[i]["dep"] in {"nsubj", "nsubjpass"} and tokens[i]["head"] == clause_root for i in positions):
             return []

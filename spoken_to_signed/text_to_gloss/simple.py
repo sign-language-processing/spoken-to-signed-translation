@@ -17,4 +17,4 @@ def text_to_gloss(text: str, language: str, **unused_kwargs) -> list[Gloss]:
     else:
         words = lemmas = text.lower().split(" ")
 
-    return tokens_to_gloss([GlossItem(word=w, gloss=lemma) for w, lemma in zip(words, lemmas)])
+    return tokens_to_gloss([GlossItem(word=w, gloss=lemma) for w, lemma in zip(words, lemmas, strict=False)])

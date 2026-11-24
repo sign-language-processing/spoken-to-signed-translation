@@ -506,7 +506,7 @@ def _asl_sentence_to_gloss(sentence, metadata):
     # Retain original objects, including punctuation, to preserve source alignment.
     gloss = [
         item
-        for index, (item, features) in enumerate(zip(sentence, metadata))
+        for index, (item, features) in enumerate(zip(sentence, metadata, strict=False))
         if not _omit_asl(
             item,
             features,
@@ -563,7 +563,7 @@ def text_to_gloss(text: str, language: str, punctuation=False, signed_language=N
         metadata = [{"pos": token.pos_, "morphology": [token.morph.to_dict()]} for token in doc]
         sentences = tokens_to_gloss(tokens, language="en", signed_language="ase", metadata=metadata)
         if not punctuation:
-            punctuation_ids = {id(item) for item, token in zip(tokens, doc) if token.is_punct}
+            punctuation_ids = {id(item) for item, token in zip(tokens, doc, strict=False) if token.is_punct}
             sentences = [[item for item in sentence if id(item) not in punctuation_ids] for sentence in sentences]
         return sentences
 
@@ -578,4 +578,4 @@ def text_to_gloss(text: str, language: str, punctuation=False, signed_language=N
     glosses = output_dict["glosses"]
     tokens = output_dict["tokens"]
 
-    return [[GlossItem(word=t, gloss=g) for t, g in zip(tokens, glosses)]]
+    return [[GlossItem(word=t, gloss=g) for t, g in zip(tokens, glosses, strict=False)]]

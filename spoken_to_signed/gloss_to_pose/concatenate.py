@@ -1,4 +1,4 @@
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 import numpy as np
 from pose_format import Pose
@@ -14,8 +14,8 @@ from spoken_to_signed.gloss_to_pose.smoothing import smooth_concatenate_poses
 
 
 class SigningBoundary(NamedTuple):
-    start: Optional[int]
-    end: Optional[int]
+    start: int | None
+    end: int | None
 
 
 class ConcatenationSettings:
@@ -114,8 +114,8 @@ def process_sign(
     pose: Pose,
     keep_onset: bool,
     keep_offset: bool,
-    max_sign_seconds: Optional[float],
-    span: Optional[tuple[int, int]] = None,
+    max_sign_seconds: float | None,
+    span: tuple[int, int] | None = None,
 ) -> Pose:
     # Trim a sign to its active signing span and, if it runs too long, speed it up.
     # The span is a precomputed (segmentation) active-signing range when available,
@@ -177,9 +177,9 @@ def hide_lowered_hands(pose: Pose, threshold: float = 0.15, min_show_seconds: fl
 def concatenate_poses(
     poses: list[Pose],
     trim=True,
-    max_sign_seconds: Optional[float] = 0.8,
+    max_sign_seconds: float | None = 0.8,
     hide_idle_hands: bool = True,
-    signing_spans: Optional[list[Optional[tuple[int, int]]]] = None,
+    signing_spans: list[tuple[int, int] | None] | None = None,
 ) -> Pose:
     if ConcatenationSettings.is_reduce_holistic:
         print("Reducing poses...")
